@@ -95,72 +95,67 @@ class ApiService {
     }
   }
 
-  static Future<ApiResponse<dynamic>> sendVerificationCode(String email, String userType) async {
-    try {
-      final response = await http.post(
-        Uri.parse(Constants.sendVerificationCodeEndpoint),
-        headers: _headers,
-        body: jsonEncode({
-          'correo': email,
-          'userType': userType,
-        }),
+static Future<ApiResponse<dynamic>> sendVerificationCode(String email, String userType) async {
+  try {
+    // Primero verificar en qué tabla existe el usuario
+    final userTypeCheck = await checkUserExists(email);
+    String actualUserType = userType;
+    
+    if (userTypeCheck.success && userTypeCheck.data != null) {
+      actualUserType = userTypeCheck.data!;
+    } else {
+      return ApiResponse<dynamic>(
+        success: false,
+        message: 'Usuario no encontrado en el sistema',
+        data: null,
       );
-      
-      print('=== ENVIANDO CÓDIGO DE VERIFICACIÓN ===');
-      print('URL: ${Constants.sendVerificationCodeEndpoint}');
-      print('Email: $email');
-      print('UserType: $userType');
-      print('Response Status: ${response.statusCode}');
-      print('Response Body: ${response.body}');
-      print('====================================');
+    }
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        try {
-          final data = jsonDecode(response.body);
-          return ApiResponse<dynamic>(
-            success: true,
-            message: data['message']?.toString() ?? 'Código enviado exitosamente',
-            data: data,
-          );
-        } catch (e) {
-          // Si no se puede parsear JSON, asumir éxito si el status code es correcto
-          return ApiResponse<dynamic>(
-            success: true,
-            message: 'Código enviado exitosamente',
-            data: null,
-          );
-        }
-      } else {
-        String errorMessage = 'Error enviando código';
-        
-        try {
-          if (response.body.isNotEmpty) {
-            final errorData = jsonDecode(response.body);
-            errorMessage = errorData['message']?.toString() ?? errorMessage;
-          }
-        } catch (e) {
-          // Si no se puede parsear, usar el body directamente si no está vacío
-          if (response.body.isNotEmpty) {
-            errorMessage = response.body;
-          }
-        }
-        
+    final response = await http.post(
+      Uri.parse(Constants.sendVerificationCodeEndpoint),
+      headers: _headers,
+      body: jsonEncode({
+        'correo': email,
+        'userType': actualUserType,
+      }),
+    );
+    
+    print('=== ENVIANDO CÓDIGO DE VERIFICACIÓN ===');
+    print('URL: ${Constants.sendVerificationCodeEndpoint}');
+    print('Email: $email');
+    print('UserType Original: $userType');
+    print('UserType Verificado: $actualUserType');
+    print('Response Status: ${response.statusCode}');
+    print('Response Body: ${response.body}');
+    print('====================================');
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      try {
+        final data = jsonDecode(response.body);
         return ApiResponse<dynamic>(
-          success: false,
-          message: errorMessage,
-          data: null,
+          success: true,
+          message: data['message']?.toString() ?? 'Código enviado exitosamente',
+          data: {'userType': actualUserType}, // Devolver el tipo correcto
+        );
+      } catch (e) {
+        return ApiResponse<dynamic>(
+          success: true,
+          message: 'Código enviado exitosamente',
+          data: {'userType': actualUserType},
         );
       }
-    } catch (e) {
-      print('Error enviando código de verificación: $e');
+    } else {
+      String errorMessage = 'Error enviando código';
       
-      String errorMessage = e.toString();
-      if (errorMessage.contains('SocketException')) {
-        errorMessage = 'Error de conexión a internet';
-      } else if (errorMessage.contains('TimeoutException')) {
-        errorMessage = 'Tiempo de espera agotado';
-      } else if (errorMessage.contains('FormatException')) {
-        errorMessage = 'Error de formato en la respuesta del servidor';
+      try {
+        if (response.body.isNotEmpty) {
+          final errorData = jsonDecode(response.body);
+          errorMessage = errorData['message']?.toString() ?? errorMessage;
+        }
+      } catch (e) {
+        if (response.body.isNotEmpty) {
+          errorMessage = response.body;
+        }
       }
       
       return ApiResponse<dynamic>(
@@ -169,7 +164,15 @@ class ApiService {
         data: null,
       );
     }
+  } catch (e) {
+    print('Error enviando código de verificación: $e');
+    return ApiResponse<dynamic>(
+      success: false,
+      message: e.toString(),
+      data: null,
+    );
   }
+}
 
   // REEMPLAZAR el método verifyCodeAndLogin en api_service.dart
 static Future<ApiResponse<dynamic>> verifyCodeAndLogin(String email, String password, String userType, String code) async {
@@ -312,51 +315,52 @@ static Future<ApiResponse<dynamic>> verifyCodeAndLogin(String email, String pass
 }
 
   // VERIFICAR SI USUARIO EXISTE Y OBTENER TIPO
-  static Future<ApiResponse<String>> checkUserExists(String email) async {
-    try {
-      // Primero verificar en clientes
-      final clientResponse = await http.get(
-        Uri.parse('${Constants.getClientEndpoint}?correo=$email'),
-        headers: _headers,
-      );
-      
-      if (clientResponse.statusCode == 200) {
-        final clientData = jsonDecode(clientResponse.body);
-        if (clientData != null && clientData.isNotEmpty) {
-          return ApiResponse<String>(
-            success: true,
-            message: 'Usuario encontrado',
-            data: Constants.clientType,
-          );
-        }
+ static Future<ApiResponse<String>> checkUserExists(String email) async {
+  try {
+    // Primero verificar en usuarios (admin)
+    final userResponse = await http.get(
+      Uri.parse('${Constants.getUserEndpoint}?correo=$email'),
+      headers: _headers,
+    );
+    
+    if (userResponse.statusCode == 200) {
+      final userData = jsonDecode(userResponse.body);
+      if (userData != null && userData.isNotEmpty) {
+        return ApiResponse<String>(
+          success: true,
+          message: 'Usuario encontrado',
+          data: Constants.adminType, // admin
+        );
       }
-      
-      // Luego verificar en usuarios
-      final userResponse = await http.get(
-        Uri.parse('${Constants.getUserEndpoint}?correo=$email'),
-        headers: _headers,
-      );
-      
-      if (userResponse.statusCode == 200) {
-        final userData = jsonDecode(userResponse.body);
-        if (userData != null && userData.isNotEmpty) {
-          return ApiResponse<String>(
-            success: true,
-            message: 'Usuario encontrado',
-            data: Constants.adminType,
-          );
-        }
-      }
-      
-      return ApiResponse<String>(
-        success: false,
-        message: 'Usuario no encontrado',
-        data: null,
-      );
-    } catch (e) {
-      throw Exception('Error verificando usuario: $e');
     }
+    
+    // Luego verificar en clientes
+    final clientResponse = await http.get(
+      Uri.parse('${Constants.getClientEndpoint}?correo=$email'),
+      headers: _headers,
+    );
+    
+    if (clientResponse.statusCode == 200) {
+      final clientData = jsonDecode(clientResponse.body);
+      if (clientData != null && clientData.isNotEmpty) {
+        return ApiResponse<String>(
+          success: true,
+          message: 'Usuario encontrado',
+          data: Constants.clientType, // cliente
+        );
+      }
+    }
+    
+    return ApiResponse<String>(
+      success: false,
+      message: 'Usuario no encontrado',
+      data: null,
+    );
+  } catch (e) {
+    throw Exception('Error verificando usuario: $e');
   }
+}
+
 
   // ==================== REGISTRO ====================
 

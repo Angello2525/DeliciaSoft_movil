@@ -11,7 +11,6 @@ import '../screens/client/client_dashboard.dart';
 import '../screens/client/client_profile.dart';
 import '../screens/home_navigation.dart';
 
-
 class AppRoutes {
   static const String splash = '/';
   static const String login = '/login';
@@ -25,7 +24,6 @@ class AppRoutes {
   static const String clientProfile = '/client-profile';
   static const String homeNavigation = '/home-navigation';
 
-
   static Map<String, WidgetBuilder> get routes => {
     splash: (context) => const SplashScreen(),
     login: (context) => const LoginScreen(),
@@ -36,7 +34,6 @@ class AppRoutes {
     clientDashboard: (context) => const ClientDashboard(),
     clientProfile: (context) => const ClientProfile(),
     homeNavigation: (context) => const HomeNavigation(),
-
   };
 
   static Route<dynamic>? onGenerateRoute(RouteSettings settings) {
@@ -54,8 +51,12 @@ class AppRoutes {
         );
 
       case resetPassword:
+        final args = settings.arguments as Map<String, dynamic>?;
         return MaterialPageRoute(
-          builder: (context) => const ResetPasswordScreen(), 
+          builder: (context) => ResetPasswordScreen(
+            email: args?['email'] ?? '',
+            verificationCode: args?['verificationCode'] ?? '',
+          ),
         );
 
       default:

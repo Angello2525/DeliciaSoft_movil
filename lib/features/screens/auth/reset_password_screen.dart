@@ -6,12 +6,16 @@ import '../../utils/routes.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../widgets/loading_widget.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-
 
 class ResetPasswordScreen extends StatefulWidget {
-  const ResetPasswordScreen({super.key});
+  final String email;
+  final String verificationCode;
+
+  const ResetPasswordScreen({
+    super.key,
+    required this.email,
+    required this.verificationCode,
+  });
 
   @override
   State<ResetPasswordScreen> createState() => _ResetPasswordScreenState();
@@ -21,17 +25,6 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmController = TextEditingController();
-
-  late String email;
-  late String verificationCode;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-    email = args?['email'] ?? '';
-    verificationCode = args?['verificationCode'] ?? '';
-  }
 
   @override
   void dispose() {
@@ -45,7 +38,11 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final password = _passwordController.text.trim();
 
-      final errorMessage = await authProvider.resetPassword(email, verificationCode, password);
+      final errorMessage = await authProvider.resetPassword(
+        widget.email,
+        widget.verificationCode,
+        password,
+      );
 
       if (!mounted) return;
 

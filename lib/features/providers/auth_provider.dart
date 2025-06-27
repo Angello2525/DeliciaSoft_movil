@@ -38,55 +38,62 @@ class AuthProvider with ChangeNotifier {
     _isVerifyingCode = false;
   }
 
-  Future<String?> checkUserType(String email) async {
-    _isLoading = true;
-    _error = null;
+ Future<String?> checkUserType(String email) async {
+  _isLoading = true;
+  _error = null;
+  notifyListeners();
+
+  try {
+    // 1) Consultamos si existe como admin
+    final isAdmin = await AuthService.checkIfAdmin(email);
+    if (isAdmin) {
+      return Constants.adminType;
+    }
+
+    // 2) Consultamos si existe como cliente
+    final isClient = await AuthService.checkIfClient(email);
+    if (isClient) {
+      return Constants.clientType;
+    }
+
+    // 3) No existe en ninguno
+    return null;
+  } catch (e) {
+    _error = e.toString().contains('Exception:')
+        ? e.toString().replaceFirst('Exception:', '').trim()
+        : 'Error verificando usuario';
+    return null;
+  } finally {
+    _isLoading = false;
     notifyListeners();
+  }
+}
 
-    try {
-      final userType = await AuthService.checkUserType(email);
-      return userType;
-    } catch (e) {
-      _error = e.toString().contains('Exception:')
-          ? e.toString().replaceFirst('Exception:', '').trim()
-          : 'Error verificando usuario';
-      return null;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
+  Future<Map<String, dynamic>?> sendVerificationCode(String email, String userType) async {
+  if (_isSendingCode) {
+    return {'error': 'Ya se está enviando un código, por favor espera...'};
   }
 
-  Future<String?> sendVerificationCode(String email, String userType) async {
-    if (_isSendingCode) {
-      return null; // Permitir que continue sin error si ya se está enviando
+  _isSendingCode = true;
+
+  try {
+    final response = await AuthService.sendVerificationCode(email, userType);
+    if (response) {
+      return {'success': true, 'userType': userType};
+    } else {
+      return {'error': 'Error enviando código de verificación'};
     }
-
-    _isSendingCode = true;
-
-    try {
-      final response = await AuthService.sendVerificationCode(email, userType);
-      return response ? null : 'Error enviando código de verificación';
-    } catch (e) {
-      String errorMessage = e.toString();
-      if (errorMessage.contains('Exception:')) {
-        errorMessage = errorMessage.replaceFirst('Exception:', '').trim();
-      }
-      if (errorMessage.toLowerCase().contains('connection')) {
-        return 'Error de conexión. Verifica tu internet e intenta nuevamente.';
-      } else if (errorMessage.toLowerCase().contains('timeout')) {
-        return 'Tiempo de espera agotado. Intenta nuevamente.';
-      } else if (errorMessage.toLowerCase().contains('correo')) {
-        return 'El correo electrónico no es válido o no está registrado.';
-      }
-
-      return errorMessage.isNotEmpty
-          ? errorMessage
-          : 'Error enviando código de verificación';
-    } finally {
-      _isSendingCode = false;
+  } catch (e) {
+    String errorMessage = e.toString();
+    if (errorMessage.contains('Exception:')) {
+      errorMessage = errorMessage.replaceFirst('Exception:', '').trim();
     }
+    return {'error': errorMessage.isNotEmpty ? errorMessage : 'Error enviando código de verificación'};
+  } finally {
+    _isSendingCode = false;
   }
+}
+
 
   Future<String?> verifyCodeAndLogin(
     String email,

@@ -3,6 +3,10 @@ import '../models/cliente.dart';
 import '../models/usuario.dart';
 import 'api_service.dart';
 import 'storage_service.dart';
+import 'package:http/http.dart' as http;
+import '../utils/constants.dart';
+import 'dart:convert';
+
 
 class AuthService {
 
@@ -117,15 +121,58 @@ class AuthService {
     return null;
   }
 
-  static Future<String?> checkUserType(String email) async {
+static Future<String?> checkUserType(String email) async {
+  final response = await ApiService.checkUserExists(email);
+  if (response.success) {
+    return response.data;  // data = adminType o clientType
+  }
+  return null;
+}
+
+static Future<bool> checkIfAdmin(String email) async {
     try {
-      final response = await ApiService.checkUserExists(email);
-      if (response.success) {
-        return response.data;
+      final response = await http.get(Uri.parse(Constants.getUserEndpoint));
+      if (response.statusCode == 200) {
+        final List<dynamic> users = jsonDecode(response.body);
+        final user = users.firstWhere(
+          (u) => u['correo'] == email,
+          orElse: () => null,
+        );
+        return user != null;
+      } else {
+        throw Exception('Error HTTP ${response.statusCode}');
       }
-      return null;
     } catch (e) {
       throw Exception('Error verificando tipo de usuario: $e');
+    }
+  }
+
+  static Future<bool> checkIfClient(String email) async {
+    try {
+      final response = await http.get(Uri.parse(Constants.getClientEndpoint));
+      if (response.statusCode == 200) {
+        final dynamic data = jsonDecode(response.body);
+        List<dynamic> clients;
+
+        // ⚠️ Verificamos si el backend devuelve lista o un solo objeto
+        if (data is List) {
+          clients = data;
+        } else if (data is Map) {
+          clients = [data];
+        } else {
+          throw Exception('Respuesta inesperada del servidor');
+        }
+
+        final client = clients.firstWhere(
+          (c) => c['correo'] == email,
+          orElse: () => null,
+        );
+        return client != null;
+      } else {
+        throw Exception('Error HTTP ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Error verificando tipo de cliente: $e');
     }
   }
 
@@ -232,36 +279,32 @@ static Future<AuthResponse> verifyCodeAndLogin(String email, String password, St
   }
 }
 
-  static Future<bool> sendVerificationCode(String email, String userType) async {
-    try {
-      final response = await ApiService.sendVerificationCode(email, userType);
-      
-      if (response.success) {
-        return true;
-      } else {
-        throw Exception(response.message ?? 'Error enviando código');
-      }
-    } catch (e) {
-      String errorMessage = e.toString();
-      
-      // Limpiar el mensaje de error
-      if (errorMessage.contains('Exception:')) {
-        errorMessage = errorMessage.replaceFirst('Exception:', '').trim();
-      }
-      
-      // Propagar errores específicos
-      if (errorMessage.toLowerCase().contains('correo no registrado') || 
-        errorMessage.toLowerCase().contains('usuario no encontrado')) {
-        throw Exception('El correo electrónico no está registrado.');
-      } else if (errorMessage.toLowerCase().contains('usuario no encontrado')) {
-        throw Exception('El usuario no existe en el sistema.');
-      } else if (errorMessage.toLowerCase().contains('límite de códigos')) {
-        throw Exception('Has alcanzado el límite de códigos por hora. Intenta más tarde.');
-      } else if (errorMessage.toLowerCase().contains('servicio de correo')) {
-        throw Exception('Error en el servicio de correo. Intenta más tarde.');
-      }
-      
-      throw Exception(errorMessage.isEmpty ? 'Error enviando código de verificación' : errorMessage);
+static Future<bool> sendVerificationCode(String email, String userType) async {
+  try {
+    final response = await ApiService.sendVerificationCode(email, userType);
+    
+    if (response.success) {
+      return true;
+    } else {
+      throw Exception(response.message ?? 'Error enviando código');
     }
+  } catch (e) {
+    String errorMessage = e.toString();
+    
+    if (errorMessage.contains('Exception:')) {
+      errorMessage = errorMessage.replaceFirst('Exception:', '').trim();
+    }
+    
+    if (errorMessage.toLowerCase().contains('correo no registrado') || 
+      errorMessage.toLowerCase().contains('usuario no encontrado')) {
+      throw Exception('El correo electrónico no está registrado.');
+    } else if (errorMessage.toLowerCase().contains('límite de códigos')) {
+      throw Exception('Has alcanzado el límite de códigos por hora. Intenta más tarde.');
+    } else if (errorMessage.toLowerCase().contains('servicio de correo')) {
+      throw Exception('Error en el servicio de correo. Intenta más tarde.');
+    }
+    
+    throw Exception(errorMessage.isEmpty ? 'Error enviando código de verificación' : errorMessage);
   }
+}
 }
