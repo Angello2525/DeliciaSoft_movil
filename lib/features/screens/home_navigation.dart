@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
-import 'home_screen.dart'; // Importa tu pantalla original
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
+import 'home_screen.dart';
+import 'auth/login_screen.dart';
+import 'client/client_dashboard.dart';
 
 class HomeNavigation extends StatefulWidget {
   const HomeNavigation({super.key});
@@ -11,61 +15,113 @@ class HomeNavigation extends StatefulWidget {
 class _HomeNavigationState extends State<HomeNavigation> {
   int _selectedIndex = 0;
 
-  final List<Widget> _screens = [
-    HomeScreen(), // Tu pantalla principal con categorías
-    const Center(child: Text('Perfil')),
-    const Center(child: Text('Usuarios')),
-    const Center(child: Text('Productos')),
-    const Center(child: Text('Pedidos')),
-  ];
-
-  void _onItemTapped(int index) {
-    if (index == 5) {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Cerrar sesión'),
-          content: const Text('¿Estás seguro de cerrar sesión?'),
-          actions: [
-            TextButton(
-              child: const Text('Cancelar'),
-              onPressed: () => Navigator.pop(context),
-            ),
-            TextButton(
-              child: const Text('Sí, cerrar'),
-              onPressed: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Sesión cerrada')),
-                );
-              },
-            ),
-          ],
-        ),
-      );
-    } else {
-      setState(() => _selectedIndex = index);
+  List<Widget> _buildScreens(AuthProvider auth) {
+    if (!auth.isAuthenticated) {
+      return [
+        HomeScreen(),
+        const Center(child: Text('Mis pedidos (requiere login)')),
+        const LoginScreen(),
+      ];
     }
+
+    if (auth.userType == 'admin') {
+      return [
+        HomeScreen(),
+        const Center(child: Text('Perfil')),
+        const Center(child: Text('Ventas')),
+        const Center(child: Text('Cerrar sesión')),
+      ];
+    }
+
+    // Cliente
+return [
+  HomeScreen(),
+  const ClientDashboard(), 
+  const Center(child: Text('Mis pedidos')),
+  const SizedBox(),
+];
+
   }
+
+  List<BottomNavigationBarItem> _buildItems(AuthProvider auth) {
+    if (!auth.isAuthenticated) {
+      return const [
+        BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Inicio'),
+        BottomNavigationBarItem(icon: Icon(Icons.list_alt), label: 'Mis pedidos'),
+        BottomNavigationBarItem(icon: Icon(Icons.login), label: 'Iniciar'),
+      ];
+    }
+
+    if (auth.userType == 'admin') {
+      return const [
+        BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Inicio'),
+        BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Perfil'),
+        BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Ventas'),
+        BottomNavigationBarItem(icon: Icon(Icons.logout), label: 'Cerrar'),
+      ];
+    }
+
+    return const [
+      BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Inicio'),
+      BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Perfil'),
+      BottomNavigationBarItem(icon: Icon(Icons.list_alt), label: 'Mis pedidos'),
+      BottomNavigationBarItem(icon: Icon(Icons.logout), label: 'Cerrar'),
+    ];
+  }
+
+void _onItemTapped(int index, AuthProvider auth) {
+  final isLogout = auth.isAuthenticated && index == _buildItems(auth).length - 1;
+
+  if (!auth.isAuthenticated && index == 1) {
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LoginScreen()));
+  } else if (!auth.isAuthenticated && index == 2) {
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LoginScreen()));
+  } else if (isLogout) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Cerrar sesión'),
+        content: const Text('¿Estás segura de que deseas cerrar sesión?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context); // Cierra el diálogo
+              await auth.logout();
+              if (mounted) setState(() => _selectedIndex = 0);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Sesión cerrada correctamente')),
+              );
+            },
+            child: const Text('Cerrar sesión'),
+          ),
+        ],
+      ),
+    );
+  } else {
+    setState(() => _selectedIndex = index);
+  }
+}
+
 
   @override
   Widget build(BuildContext context) {
+    final auth = Provider.of<AuthProvider>(context);
+    final screens = _buildScreens(auth);
+    final items = _buildItems(auth);
+
     return Scaffold(
-      body: _screens[_selectedIndex],
+      body: screens[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
+        onTap: (i) => _onItemTapped(i, auth),
         selectedItemColor: Colors.pink,
         unselectedItemColor: Colors.grey,
         type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Inicio'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Perfil'),
-          BottomNavigationBarItem(icon: Icon(Icons.group), label: 'Usuarios'),
-          BottomNavigationBarItem(icon: Icon(Icons.cake), label: 'Productos'),
-          BottomNavigationBarItem(icon: Icon(Icons.list_alt), label: 'Pedidos'),
-          BottomNavigationBarItem(icon: Icon(Icons.logout), label: 'Cerrar'),
-        ],
+        items: items,
       ),
     );
   }
