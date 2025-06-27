@@ -50,20 +50,18 @@ Future<void> _sendInitialCode() async {
   if (widget.userType != null && !widget.isPasswordReset) {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     
-    final errorMessage = await authProvider.sendVerificationCode(
+    final response = await authProvider.sendVerificationCode(
       widget.email,
       widget.userType!,
     );
-    
-    if (mounted) {
-      if (errorMessage != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error enviando código inicial: $errorMessage'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+
+    if (mounted && response != null && response['error'] != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error enviando código inicial: ${response['error']}'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 }
@@ -200,35 +198,34 @@ Future<void> _verifyCode() async {
   }
 }
 
-  Future<void> _resendCode() async {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    
+ Future<void> _resendCode() async {
+  final authProvider = Provider.of<AuthProvider>(context, listen: false);
+  
+  if (!mounted) return;
+
+  if (widget.userType != null) {
+    final response = await authProvider.sendVerificationCode(
+      widget.email,
+      widget.userType!,
+    );
+
     if (!mounted) return;
 
-    if (widget.userType != null) {
-      final errorMessage = await authProvider.sendVerificationCode(
-        widget.email,
-        widget.userType!,
+    if (response != null && response['error'] != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(response['error'])),
       );
-      
-      if (!mounted) return;
-      
-      if (errorMessage == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Código reenviado exitosamente')),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMessage)),
-        );
-      }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No se puede reenviar el código: tipo de usuario no definido.')),
+        const SnackBar(content: Text('Código reenviado exitosamente')),
       );
     }
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('No se puede reenviar el código: tipo de usuario no definido.')),
+    );
   }
-
+}
   @override
   Widget build(BuildContext context) {
     return Scaffold(

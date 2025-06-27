@@ -7,54 +7,71 @@ part 'usuario.g.dart';
 class Usuario {
   @JsonKey(name: 'idUsuario')
   final int idUsuario;
-  
+
   @JsonKey(name: 'tipoDocumento')
   final String tipoDocumento;
-  
+
   @JsonKey(name: 'documento')
-  final int documento;
-  
+  final String documento;
+
   @JsonKey(name: 'nombre')
   final String nombre;
-  
+
   @JsonKey(name: 'apellido')
   final String apellido;
-  
+
   @JsonKey(name: 'correo')
   final String correo;
-  
+
   @JsonKey(name: 'hashContraseña')
   final String? hashContrasena;
-  
+
   @JsonKey(name: 'idRol')
   final int idRol;
-  
+
   @JsonKey(name: 'estado')
   final bool estado;
-  
+
   @JsonKey(name: 'idRolNavigation')
   final Rol? idRolNavigation;
 
   Usuario({
-    required this.idUsuario,
-    required this.tipoDocumento,
-    required this.documento,
-    required this.nombre,
-    required this.apellido,
-    required this.correo,
+    this.idUsuario = 0,
+    this.tipoDocumento = '',
+    this.documento = '',
+    this.nombre = '',
+    this.apellido = '',
+    this.correo = '',
     this.hashContrasena,
-    required this.idRol,
-    required this.estado,
+    this.idRol = 0,
+    this.estado = true,
     this.idRolNavigation,
   });
 
-  factory Usuario.fromJson(Map<String, dynamic> json) => _$UsuarioFromJson(json);
+  /// fromJson defensivo
+  factory Usuario.fromJson(Map<String, dynamic> json) {
+    return Usuario(
+      idUsuario: json['idUsuario'] as int? ?? 0,
+      tipoDocumento: json['tipoDocumento']?.toString() ?? '',
+      documento: json['documento']?.toString() ?? '',
+      nombre: json['nombre']?.toString() ?? '',
+      apellido: json['apellido']?.toString() ?? '',
+      correo: json['correo']?.toString() ?? '',
+      hashContrasena: json['hashContraseña']?.toString(),
+      idRol: json['idRol'] as int? ?? 0,
+      estado: json['estado'] as bool? ?? true,
+      idRolNavigation: json['idRolNavigation'] != null
+          ? Rol.fromJson(json['idRolNavigation'] as Map<String, dynamic>)
+          : null,
+    );
+  }
+
   Map<String, dynamic> toJson() => _$UsuarioToJson(this);
 
   Usuario copyWith({
     int? idUsuario,
     String? tipoDocumento,
-    int? documento,
+    String? documento,
     String? nombre,
     String? apellido,
     String? correo,
@@ -77,7 +94,7 @@ class Usuario {
     );
   }
 
-  String get fullName => '$nombre $apellido';
+  String get fullName => '$nombre $apellido'.trim();
   String get roleName => idRolNavigation?.rol1 ?? '';
   bool get isAdmin => roleName.toLowerCase().contains('admin');
 }
