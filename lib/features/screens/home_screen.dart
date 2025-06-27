@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import '../models/category.dart';
 import '../widgets/category_card.dart';
-import 'fresa_screen.dart'; 
+import 'fresa_screen.dart';
 import 'oblea_screen.dart';
 import 'tortas_screen.dart';
-
 
 class HomeScreen extends StatelessWidget {
   HomeScreen({super.key});
@@ -12,37 +11,38 @@ class HomeScreen extends StatelessWidget {
   final List<Category> categories = [
     Category(
       title: "Fresas con crema",
-      imageUrl: "https://i.pinimg.com/736x/d7/b6/e9/d7b6e956da64a77e3ee67ab653df57a6.jpg",
+      imageUrl: "https://cdn0.recetasgratis.net/es/posts/5/6/3/postre_dulce_con_fresas_47365_600_square.jpg", 
     ),
     Category(
       title: "Obleas",
-      imageUrl: "https://previews.123rf.com/images/lukpedclub/lukpedclub2104/lukpedclub210400223/167565331-wafer-icon-bakery-and-baking-related-vector-illustration.jpg",
+      imageUrl: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQJdzsqQ1-H38WviqPwc3G-VejdZMXYdHYZhg&s", 
     ),
     Category(
       title: "Tortas",
-      imageUrl: "https://img.freepik.com/psd-gratis/delicioso-pastel-cumpleanos-chocolate-velas_632498-24980.jpg?uid=R202211906&ga=GA1.1.1880085198.1748478013&semt=ais_items_boosted&w=740",
+      imageUrl: "https://images.unsplash.com/photo-1578985545062-69928b1d9587", 
     ),
     Category(
       title: "Postres",
-      imageUrl: "https://cdn-icons-png.flaticon.com/256/7297/7297266.png",
+      imageUrl: "https://i.blogs.es/e90432/vasitos/450_1000.jpg", 
     ),
     Category(
       title: "Mini Donas",
-      imageUrl: "https://img.freepik.com/vector-gratis/vector-colorido-icono-rosquilla-rosa-aislado-sobre-fondo-blanco_134830-1096.jpg?semt=ais_hybrid&w=740",
+      imageUrl: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSDnwct0mRhag-39CMD2wpajrIBeAC99R_Yng&s",
     ),
     Category(
       title: "Cupcakes",
-      imageUrl: "https://st4.depositphotos.com/18672748/20964/v/450/depositphotos_209642320-stock-illustration-cupcake-icon-vector-isolated-white.jpg",
+      imageUrl: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTuiczKbyAE9tByw7ylrBP78SVtrbaCyjFuWg&s",
     ),
     Category(
       title: "Arroz con leche",
-      imageUrl: "https://cdn-icons-png.flaticon.com/512/2579/2579301.png",
+      imageUrl: "https://www.recetasnestle.com.pe/sites/default/files/styles/recipe_detail_desktop_new/public/srh_recipes/6458c5dfff3606c63d0212a0b6b7a738.jpg?itok=f8CNJKSe", 
     ),
     Category(
       title: "Sandwiches",
-      imageUrl: "https://cdn-icons-png.flaticon.com/512/1046/1046784.png",
+      imageUrl: "https://www.recetasnestlecam.com/sites/default/files/srh_recipes/c5ad0cfe9d4beb9d633c9709113a1452.jpg",
     ),
   ];
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -67,7 +67,6 @@ class HomeScreen extends StatelessWidget {
               title: category.title,
               imageUrl: category.imageUrl,
               onTap: () {
-                // Navega a la pantalla correspondiente según el título
                 switch (category.title) {
                   case "Fresas con crema":
                     Navigator.push(
@@ -87,7 +86,7 @@ class HomeScreen extends StatelessWidget {
                       ),
                     );
                     break;
-                    case "Tortas":
+                  case "Tortas":
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -96,15 +95,6 @@ class HomeScreen extends StatelessWidget {
                       ),
                     );
                     break;
-                  // Aquí puedes seguir agregando más pantallas:
-                  // case "Tortas":
-                  //   Navigator.push(
-                  //     context,
-                  //     MaterialPageRoute(
-                  //       builder: (context) => TortaScreen(categoryTitle: category.title),
-                  //     ),
-                  //   );
-                  //   break;
                   default:
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(

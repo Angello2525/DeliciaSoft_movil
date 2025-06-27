@@ -15,19 +15,19 @@ class _ObleaScreenState extends State<ObleaScreen> {
   final List<Map<String, String>> allProductos = [
     {
       'nombre': 'Oblea Tradicional',
-      'imagen': 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQJRgaWK3KE0qSW4G-IfYopSJzneQX-qxm-zQ&s',
+      'imagen': 'https://i.pinimg.com/736x/f6/3d/4f/f63d4f58a292442b7c5f2793f5fba429.jpg',
     },
     {
       'nombre': 'Oblea Especial',
-      'imagen': 'https://www.recetasnestle.com.co/sites/default/files/styles/recipe_detail_desktop/public/srh_recipes/e6de12b75d2c3839a9a902d389c8d75f.jpg',
+      'imagen': 'https://i.pinimg.com/736x/04/d4/ba/04d4babf1381ce02336a0e315cf31e8d.jpg',
     },
     {
       'nombre': 'Oblea de la Casa',
-      'imagen': 'https://cdn7.kiwilimon.com/recetaimagen/18858/960x640/37184.jpg.webp',
+      'imagen': 'https://i.pinimg.com/736x/69/48/a3/6948a33d397ceae97eba36af7e050f16.jpg',
     },
     {
       'nombre': 'Oblea Grande',
-      'imagen': 'https://cdn7.kiwilimon.com/recetaimagen/18858/960x640/37184.jpg.webp',
+      'imagen': 'https://i.pinimg.com/736x/6a/f0/87/6af087245db6a2089e6660f1c6290f74.jpg',
     },
   ];
 

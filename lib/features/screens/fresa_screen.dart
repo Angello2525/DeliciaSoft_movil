@@ -19,15 +19,15 @@ class _FresaScreenState extends State<FresaScreen> {
     },
     {
       'nombre': 'Fresas con crema y cereza',
-      'imagen': 'https://www.recetasnestle.com.co/sites/default/files/styles/recipe_detail_desktop/public/srh_recipes/e6de12b75d2c3839a9a902d389c8d75f.jpg',
+      'imagen': 'https://i.pinimg.com/736x/b2/2f/23/b22f231315abb506e4dc9185492f3d22.jpg',
     },
     {
       'nombre': 'Fresas con crema y mango',
-      'imagen': 'https://cdn7.kiwilimon.com/recetaimagen/18858/960x640/37184.jpg.webp',
+      'imagen': 'https://i.pinimg.com/736x/37/90/0a/37900a728ccd21cd8d0c1b573d2cad92.jpg',
     },
     {
       'nombre': 'Fresas con crema y banano',
-      'imagen': 'https://cdn7.kiwilimon.com/recetaimagen/18858/960x640/37184.jpg.webp',
+      'imagen': 'https://i.pinimg.com/736x/fd/ff/fd/fdfffde65922346c40c3e60893f4d05d.jpg',
     },
   ];
 
