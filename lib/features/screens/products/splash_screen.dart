@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/auth_provider.dart';
-import './home_navigation.dart';
+import '../../providers/auth_provider.dart';
+import '../home_navigation.dart';
 
 
 class SplashScreen extends StatefulWidget {
@@ -18,11 +18,11 @@ class _SplashScreenState extends State<SplashScreen> {
     _checkAuthStatus();
   }
 
- Future<void> _checkAuthStatus() async {
+  Future<void> _checkAuthStatus() async {
   await Future.delayed(const Duration(seconds: 2));
   if (!mounted) return;
 
-  // Puedes dejar esto si el AuthProvider hace algo necesario al iniciar
+
   final authProvider = Provider.of<AuthProvider>(context, listen: false);
   await authProvider.initialize();
 
@@ -40,8 +40,7 @@ class _SplashScreenState extends State<SplashScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Puedes añadir un logo o un indicador de carga
-            Image.asset('assets/logo.png', height: 150), // Asegúrate de tener un logo en assets
+            Image.asset('assets/logo.png', height: 150), 
             const SizedBox(height: 20),
             const CircularProgressIndicator(),
             const SizedBox(height: 20),

@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 
-class ObleaScreen extends StatefulWidget {
+class SandwicheScreen extends StatefulWidget {
   final String categoryTitle;
 
-  const ObleaScreen({super.key, required this.categoryTitle});
+  const SandwicheScreen({super.key, required this.categoryTitle});
 
   @override
-  State<ObleaScreen> createState() => _ObleaScreenState();
+  State<SandwicheScreen> createState() => _SandwicheScreenState();
 }
 
-class _ObleaScreenState extends State<ObleaScreen> {
+class _SandwicheScreenState extends State<SandwicheScreen> {
   final TextEditingController _searchController = TextEditingController();
 
   final List<Map<String, String>> allProductos = [

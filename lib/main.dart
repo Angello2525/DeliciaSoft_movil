@@ -6,7 +6,7 @@ import 'features/providers/user_provider.dart';
 
 // Screens y navegación
 import 'features/screens/home_navigation.dart';
-import 'features/screens/splash_screen.dart';
+import 'features/screens/products/splash_screen.dart';
 
 // Utilidades
 import 'features/utils/colors.dart';
@@ -52,7 +52,7 @@ class MyApp extends StatelessWidget {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(25),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+              padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15),
             ),
           ),
           inputDecorationTheme: InputDecorationTheme(
@@ -61,14 +61,17 @@ class MyApp extends StatelessWidget {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: AppColors.primary, width: 2),
+              borderSide: BorderSide(color: AppColors.primary, width: 2),
             ),
             filled: true,
             fillColor: Colors.white,
           ),
         ),
         initialRoute: AppRoutes.splash,
-        routes: AppRoutes.routes,
+        routes: {
+          ...AppRoutes.routes,
+          // Eliminado: '/subir-imagen': (context) => const SubirImagenScreen(),
+        },
         onGenerateRoute: AppRoutes.onGenerateRoute,
       ),
     );

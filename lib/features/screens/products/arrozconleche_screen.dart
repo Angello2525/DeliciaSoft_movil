@@ -1,33 +1,33 @@
 import 'package:flutter/material.dart';
 
-class FresaScreen extends StatefulWidget {
+class ArrozconlecheScreen extends StatefulWidget {
   final String categoryTitle;
 
-  const FresaScreen({super.key, required this.categoryTitle});
+  const ArrozconlecheScreen({super.key, required this.categoryTitle});
 
   @override
-  State<FresaScreen> createState() => _FresaScreenState();
+  State<ArrozconlecheScreen> createState() => _ArrozconlecheScreenState();
 }
 
-class _FresaScreenState extends State<FresaScreen> {
+class _ArrozconlecheScreenState extends State<ArrozconlecheScreen> {
   final TextEditingController _searchController = TextEditingController();
 
   final List<Map<String, String>> allProductos = [
     {
-      'nombre': 'Fresas con crema y durazno',
-      'imagen': 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQJRgaWK3KE0qSW4G-IfYopSJzneQX-qxm-zQ&s',
+      'nombre': 'Oblea Tradicional',
+      'imagen': 'https://i.pinimg.com/736x/f6/3d/4f/f63d4f58a292442b7c5f2793f5fba429.jpg',
     },
     {
-      'nombre': 'Fresas con crema y cereza',
-      'imagen': 'https://i.pinimg.com/736x/b2/2f/23/b22f231315abb506e4dc9185492f3d22.jpg',
+      'nombre': 'Oblea Especial',
+      'imagen': 'https://i.pinimg.com/736x/04/d4/ba/04d4babf1381ce02336a0e315cf31e8d.jpg',
     },
     {
-      'nombre': 'Fresas con crema y mango',
-      'imagen': 'https://i.pinimg.com/736x/37/90/0a/37900a728ccd21cd8d0c1b573d2cad92.jpg',
+      'nombre': 'Oblea de la Casa',
+      'imagen': 'https://i.pinimg.com/736x/69/48/a3/6948a33d397ceae97eba36af7e050f16.jpg',
     },
     {
-      'nombre': 'Fresas con crema y banano',
-      'imagen': 'https://i.pinimg.com/736x/fd/ff/fd/fdfffde65922346c40c3e60893f4d05d.jpg',
+      'nombre': 'Oblea Grande',
+      'imagen': 'https://i.pinimg.com/736x/6a/f0/87/6af087245db6a2089e6660f1c6290f74.jpg',
     },
   ];
 
@@ -57,27 +57,26 @@ class _FresaScreenState extends State<FresaScreen> {
   Widget buildCard(Map<String, String> producto) {
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(20),
         color: Colors.white,
         boxShadow: const [
           BoxShadow(
             color: Color.fromARGB(30, 0, 0, 0),
-            blurRadius: 12,
-            offset: Offset(0, 6),
+            blurRadius: 10,
+            offset: Offset(0, 4),
           ),
         ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           AspectRatio(
             aspectRatio: 4 / 3,
             child: ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
               child: Image.network(
                 producto['imagen']!,
                 fit: BoxFit.cover,
-                width: double.infinity,
                 errorBuilder: (context, error, stackTrace) {
                   return const Center(
                     child: Icon(Icons.broken_image, size: 50, color: Colors.grey),
@@ -93,10 +92,11 @@ class _FresaScreenState extends State<FresaScreen> {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                fontSize: 16,
+                fontSize: 15,
                 fontWeight: FontWeight.w600,
-                color: Color(0xFF333333),
+                color: Colors.black87,
               ),
+              textAlign: TextAlign.center,
             ),
           ),
         ],
@@ -110,18 +110,17 @@ class _FresaScreenState extends State<FresaScreen> {
       backgroundColor: const Color(0xFFFFF1F6),
       appBar: AppBar(
         backgroundColor: Colors.pinkAccent,
-        centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
+        centerTitle: true,
         title: Text(
           'Seleccionaste: ${widget.categoryTitle}',
-          textAlign: TextAlign.center,
           style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
             color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
           ),
         ),
       ),
@@ -146,7 +145,6 @@ class _FresaScreenState extends State<FresaScreen> {
             ),
           ),
 
-          // 🧁 Grid de productos
           Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),

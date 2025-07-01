@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../screens/splash_screen.dart';
+import '../screens/products/splash_screen.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/register_screen.dart';
 import '../screens/auth/verification_screen.dart';
