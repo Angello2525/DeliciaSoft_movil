@@ -4,6 +4,7 @@ import '../providers/auth_provider.dart';
 import 'products/home_screen.dart';
 import 'auth/login_screen.dart';
 import 'client/client_dashboard.dart';
+import 'admin/admin_dashboard.dart';
 
 class HomeNavigation extends StatefulWidget {
   const HomeNavigation({super.key});
@@ -26,21 +27,20 @@ class _HomeNavigationState extends State<HomeNavigation> {
 
     if (auth.userType == 'admin') {
       return [
-        HomeScreen(),
-        const Center(child: Text('Perfil')),
-        const Center(child: Text('Ventas')),
-        const Center(child: Text('Cerrar sesión')),
+        HomeScreen(), // Categorías (inicio)
+        const AdminDashboard(), // Dashboard/Perfil del admin
+        const Center(child: Text('Gestión de Ventas')),
+        const SizedBox(), // Placeholder para logout
       ];
     }
 
     // Cliente
-return [
-  HomeScreen(),
-  const ClientDashboard(), 
-  const Center(child: Text('Mis pedidos')),
-  const SizedBox(),
-];
-
+    return [
+      HomeScreen(),
+      const ClientDashboard(), 
+      const Center(child: Text('Mis pedidos')),
+      const SizedBox(),
+    ];
   }
 
   List<BottomNavigationBarItem> _buildItems(AuthProvider auth) {
@@ -54,7 +54,7 @@ return [
 
     if (auth.userType == 'admin') {
       return const [
-        BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Inicio'),
+        BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Categorías'),
         BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Perfil'),
         BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Ventas'),
         BottomNavigationBarItem(icon: Icon(Icons.logout), label: 'Cerrar'),
@@ -69,43 +69,44 @@ return [
     ];
   }
 
-void _onItemTapped(int index, AuthProvider auth) {
-  final isLogout = auth.isAuthenticated && index == _buildItems(auth).length - 1;
+  void _onItemTapped(int index, AuthProvider auth) {
+    final isLogout = auth.isAuthenticated && index == _buildItems(auth).length - 1;
 
-  if (!auth.isAuthenticated && index == 1) {
-    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LoginScreen()));
-  } else if (!auth.isAuthenticated && index == 2) {
-    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LoginScreen()));
-  } else if (isLogout) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Cerrar sesión'),
-        content: const Text('¿Estás segura de que deseas cerrar sesión?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(context); // Cierra el diálogo
-              await auth.logout();
-              if (mounted) setState(() => _selectedIndex = 0);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Sesión cerrada correctamente')),
-              );
-            },
-            child: const Text('Cerrar sesión'),
-          ),
-        ],
-      ),
-    );
-  } else {
-    setState(() => _selectedIndex = index);
+    if (!auth.isAuthenticated && index == 1) {
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LoginScreen()));
+    } else if (!auth.isAuthenticated && index == 2) {
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LoginScreen()));
+    } else if (isLogout) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Cerrar sesión'),
+          content: Text(auth.userType == 'admin' 
+            ? '¿Estás seguro de que deseas cerrar sesión como administrador?' 
+            : '¿Estás segura de que deseas cerrar sesión?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(context); // Cierra el diálogo
+                await auth.logout();
+                if (mounted) setState(() => _selectedIndex = 0);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Sesión cerrada correctamente')),
+                );
+              },
+              child: const Text('Cerrar sesión'),
+            ),
+          ],
+        ),
+      );
+    } else {
+      setState(() => _selectedIndex = index);
+    }
   }
-}
-
 
   @override
   Widget build(BuildContext context) {

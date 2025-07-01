@@ -613,7 +613,9 @@ Future<String?> updateUserProfile(Map<String, dynamic> userData) async {
 
   
 
-  Future<void> loadProfileFromApi() async {
+ // REEMPLAZA el método loadProfileFromApi en tu auth_provider.dart
+
+Future<void> loadProfileFromApi() async {
   if (_token == null || _userType == null) {
     _error = 'No hay sesión activa para cargar perfil';
     notifyListeners();
@@ -625,31 +627,41 @@ Future<String?> updateUserProfile(Map<String, dynamic> userData) async {
 
   try {
     if (_userType == Constants.adminType) {
-      // Trae perfil del admin
-      final response = await ApiService.getUserProfile(_token!, _currentUser?.idUsuario ?? 0);
-      if (response.success && response.data != null) {
-        _currentUser = response.data;
-        await StorageService.saveUserData(_currentUser!.toJson());
+      // Para admin, usa el ID correcto del usuario actual
+      if (_currentUser?.idUsuario != null) {
+        final response = await ApiService.getUserProfile(_token!, _currentUser!.idUsuario);
+        if (response.success && response.data != null) {
+          _currentUser = response.data;
+          await StorageService.saveUserData(_currentUser!.toJson());
+        } else {
+          _error = response.message.isNotEmpty ? response.message : 'Error al obtener perfil de admin';
+        }
       } else {
-        _error = response.message.isNotEmpty ? response.message : 'Error al obtener perfil de admin';
+        _error = 'ID de usuario no disponible';
       }
     } else if (_userType == Constants.clientType) {
-      // Trae perfil del cliente
-      final response = await ApiService.getClientProfile(_token!, _currentClient?.idCliente ?? 0);
-      if (response.success && response.data != null) {
-        _currentClient = response.data;
-        await StorageService.saveUserData(_currentClient!.toJson());
+      // Para cliente, usa el ID correcto del cliente actual  
+      if (_currentClient?.idCliente != null) {
+        final response = await ApiService.getClientProfile(_token!, _currentClient!.idCliente);
+        if (response.success && response.data != null) {
+          _currentClient = response.data;
+          await StorageService.saveUserData(_currentClient!.toJson());
+        } else {
+          _error = response.message.isNotEmpty ? response.message : 'Error al obtener perfil de cliente';
+        }
       } else {
-        _error = response.message.isNotEmpty ? response.message : 'Error al obtener perfil de cliente';
+        _error = 'ID de cliente no disponible';
       }
     }
   } catch (e) {
     _error = 'Error cargando perfil desde API: $e';
+    print('Error en loadProfileFromApi: $e'); // Para debug
   } finally {
     _isLoading = false;
     notifyListeners();
   }
 }
+
 
 Future<String?> refreshCurrentClientProfile() async {
   if (_userType != Constants.clientType || _currentClient == null) {
