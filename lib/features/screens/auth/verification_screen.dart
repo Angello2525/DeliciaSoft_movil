@@ -127,8 +127,8 @@ Future<void> _verifyCode() async {
           print('UserType para navegación: $userType');
           print('================');
 
-          if (userType == Constants.adminType) {
-            Navigator.of(context).pushReplacementNamed(AppRoutes.adminDashboard);
+        if (userType == Constants.adminType) {
+            Navigator.of(context).pushReplacementNamed(AppRoutes.homeNavigation);
           } else if (userType == Constants.clientType) {
             Navigator.of(context).pushReplacementNamed(AppRoutes.homeNavigation);
           } else {

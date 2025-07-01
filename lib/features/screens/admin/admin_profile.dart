@@ -25,14 +25,33 @@ class _AdminProfileState extends State<AdminProfile> {
   @override
   void initState() {
     super.initState();
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final user = authProvider.currentUser;
+    
+    // Inicializar controladores vacíos
+    _nameController = TextEditingController();
+    _lastNameController = TextEditingController();
+    _emailController = TextEditingController();
+    _documentTypeController = TextEditingController();
+    _documentNumberController = TextEditingController();
+    
+    // Cargar datos frescos desde la API
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadProfileData();
+    });
+  }
 
-    _nameController = TextEditingController(text: user?.nombre ?? '');
-    _lastNameController = TextEditingController(text: user?.apellido ?? '');
-    _emailController = TextEditingController(text: user?.correo ?? '');
-    _documentTypeController = TextEditingController(text: user?.tipoDocumento ?? '');
-    _documentNumberController = TextEditingController(text: user?.documento.toString() ?? '');
+  Future<void> _loadProfileData() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    await authProvider.loadProfileFromApi();
+    
+    // Actualizar controladores con los datos frescos
+    final user = authProvider.currentUser;
+    if (user != null) {
+      _nameController.text = user.nombre;
+      _lastNameController.text = user.apellido;
+      _emailController.text = user.correo;
+      _documentTypeController.text = user.tipoDocumento;
+      _documentNumberController.text = user.documento.toString();
+    }
   }
 
   @override
@@ -57,15 +76,13 @@ class _AdminProfileState extends State<AdminProfile> {
         return;
       }
 
-      final updatedUserData = currentUser.copyWith(
+      final updatedUser = currentUser.copyWith(
         nombre: _nameController.text.trim(),
         apellido: _lastNameController.text.trim(),
         correo: _emailController.text.trim(),
-        // Document type and number are typically not updated via profile edit
-        // If they can be updated, you'll need to add fields for them
-      ).toJson(); // Convertir a Map<String, dynamic>
+      );
 
-      final errorMessage = await authProvider.updateUserProfile(updatedUserData);
+      final errorMessage = await authProvider.updateProfile(updatedUser);
 
       if (!mounted) return;
 
@@ -73,6 +90,7 @@ class _AdminProfileState extends State<AdminProfile> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Perfil actualizado exitosamente.')),
         );
+        Navigator.of(context).pop(true); // Regresar con éxito
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(errorMessage)),
@@ -88,9 +106,7 @@ class _AdminProfileState extends State<AdminProfile> {
       body: Consumer<AuthProvider>(
         builder: (context, authProvider, child) {
           final user = authProvider.currentUser;
-          if (user == null && !authProvider.isLoading) {
-            return const Center(child: Text('No se pudo cargar el perfil del administrador.'));
-          }
+          
           return LoadingWidget(
             isLoading: authProvider.isLoading,
             child: SingleChildScrollView(
@@ -142,13 +158,13 @@ class _AdminProfileState extends State<AdminProfile> {
                     CustomTextField(
                       controller: _documentTypeController,
                       labelText: 'Tipo de Documento',
-                      readOnly: true, // Typically not editable
+                      readOnly: true, // No editable
                     ),
                     const SizedBox(height: 20),
                     CustomTextField(
                       controller: _documentNumberController,
                       labelText: 'Número de Documento',
-                      readOnly: true, // Typically not editable
+                      readOnly: true, // No editable
                     ),
                     const SizedBox(height: 30),
                     CustomButton(

@@ -619,8 +619,6 @@ static Future<ApiResponse<Usuario>> getUserProfile(String token, int idUsuario) 
   }
 }
 
-
-
  static Future<ApiResponse<List<Cliente>>> getAllClients(String token) async {
   try {
     final response = await http.get(
