@@ -22,7 +22,7 @@ class Cliente {
   @JsonKey(name: 'correo')
   final String correo;
   
-  @JsonKey(name: 'contrasena')
+  @JsonKey(name: 'hashContraseña')
   final String? contrasena;
   
   @JsonKey(name: 'direccion')
@@ -63,11 +63,11 @@ class Cliente {
     required this.estado,
   });
 
-  factory Cliente.fromJson(Map<String, dynamic> json) {
+factory Cliente.fromJson(Map<String, dynamic> json) {
   return Cliente(
     idCliente: json['idCliente'] as int? ?? 0,
-    tipoDocumento: json['tipoDocumento']?.toString() ?? '',
-    numeroDocumento: json['numeroDocumento']?.toString() ?? '',
+    tipoDocumento: json['tipoDocumento']?.toString() ?? 'CC', // ✅ Valor por defecto
+    numeroDocumento: json['numeroDocumento']?.toString() ?? '', // ✅ Asegurar que no sea null
     nombre: json['nombre']?.toString() ?? '',
     apellido: json['apellido']?.toString() ?? '',
     correo: json['correo']?.toString() ?? '',

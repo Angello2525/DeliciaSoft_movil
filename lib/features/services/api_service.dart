@@ -174,6 +174,80 @@ static Future<ApiResponse<dynamic>> sendVerificationCode(String email, String us
   }
 }
 
+static Future<ApiResponse<Map<String, dynamic>>> validateCredentials(String email, String password, String userType) async {
+  try {
+    String endpoint;
+    if (userType == Constants.clientType) {
+      endpoint = Constants.loginClientEndpoint;
+    } else {
+      endpoint = Constants.loginUserEndpoint;
+    }
+
+    final response = await http.post(
+      Uri.parse('$endpoint/validate'), // Endpoint para solo validar
+      headers: _headers,
+      body: jsonEncode({
+        'correo': email,
+        'contrasena': password,
+      }),
+    );
+
+    print('=== VALIDANDO CREDENCIALES ===');
+    print('URL: $endpoint/validate');
+    print('Email: $email');
+    print('UserType: $userType');
+    print('Response Status: ${response.statusCode}');
+    print('Response Body: ${response.body}');
+    print('=============================');
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return ApiResponse<Map<String, dynamic>>(
+        success: true,
+        message: 'Credenciales válidas',
+        data: data,
+      );
+    } else if (response.statusCode == 401) {
+      return ApiResponse<Map<String, dynamic>>(
+        success: false,
+        message: 'Contraseña incorrecta',
+        data: null,
+      );
+    } else if (response.statusCode == 404) {
+      return ApiResponse<Map<String, dynamic>>(
+        success: false,
+        message: 'Usuario no encontrado',
+        data: null,
+      );
+    } else {
+      String errorMessage = 'Error validando credenciales';
+      try {
+        if (response.body.isNotEmpty) {
+          final errorData = jsonDecode(response.body);
+          errorMessage = errorData['message']?.toString() ?? errorMessage;
+        }
+      } catch (e) {
+        if (response.body.isNotEmpty) {
+          errorMessage = response.body;
+        }
+      }
+      
+      return ApiResponse<Map<String, dynamic>>(
+        success: false,
+        message: errorMessage,
+        data: null,
+      );
+    }
+  } catch (e) {
+    print('Error validando credenciales: $e');
+    return ApiResponse<Map<String, dynamic>>(
+      success: false,
+      message: 'Error de conexión',
+      data: null,
+    );
+  }
+}
+
   // REEMPLAZAR el método verifyCodeAndLogin en api_service.dart
 static Future<ApiResponse<dynamic>> verifyCodeAndLogin(String email, String password, String userType, String code) async {
   try {
@@ -364,79 +438,67 @@ static Future<ApiResponse<dynamic>> verifyCodeAndLogin(String email, String pass
 
   // ==================== REGISTRO ====================
 
-  static Future<ApiResponse<Cliente>> registerClient(Cliente cliente) async {
-    try {
-      final clienteParaRegistro = Cliente.forRegistration(
-        tipoDocumento: cliente.tipoDocumento,
-        numeroDocumento: cliente.numeroDocumento,
-        nombre: cliente.nombre,
-        apellido: cliente.apellido,
-        correo: cliente.correo,
-        contrasena: cliente.contrasena,
-        direccion: cliente.direccion,
-        barrio: cliente.barrio,
-        ciudad: cliente.ciudad,
-        fechaNacimiento: cliente.fechaNacimiento,
-        celular: cliente.celular,
-        estado: cliente.estado,
+ // REEMPLAZAR el método registerClient en api_service.dart
+static Future<ApiResponse<Cliente>> registerClient(Cliente cliente) async {
+  try {
+    final clienteParaRegistro = Cliente.forRegistration(
+      tipoDocumento: cliente.tipoDocumento,
+      numeroDocumento: cliente.numeroDocumento,
+      nombre: cliente.nombre,
+      apellido: cliente.apellido,
+      correo: cliente.correo,
+      contrasena: cliente.contrasena,
+      direccion: cliente.direccion,
+      barrio: cliente.barrio,
+      ciudad: cliente.ciudad,
+      fechaNacimiento: cliente.fechaNacimiento,  // pasamos como DateTime
+      celular: cliente.celular,
+      estado: cliente.estado,
+    );
+
+    final clienteJson = clienteParaRegistro.toJson();
+    // Aquí convertimos fechaNacimiento a "yyyy-MM-dd"
+    clienteJson['fechaNacimiento'] = cliente.fechaNacimiento?.toIso8601String().split('T')[0];
+
+    final body = jsonEncode(clienteJson);
+
+    print('=== REGISTRANDO CLIENTE ===');
+    print('URL: ${Constants.registerClientEndpoint}');
+    print('JSON: $body');
+    print('=========================');
+
+    final response = await http.post(
+      Uri.parse(Constants.registerClientEndpoint),
+      headers: _headers,
+      body: body,
+    );
+
+    print('=== RESPUESTA REGISTRO CLIENTE ===');
+    print('Status Code: ${response.statusCode}');
+    print('Response Body: ${response.body}');
+    print('=================================');
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      final data = jsonDecode(response.body);
+      return ApiResponse<Cliente>(
+        success: true,
+        message: 'Cliente registrado exitosamente',
+        data: Cliente.fromJson(data),
       );
-
-      final clienteJson = clienteParaRegistro.toJson();
-
-      print('=== REGISTRANDO CLIENTE ===');
-      print('URL: ${Constants.registerClientEndpoint}');
-      print('JSON: ${jsonEncode(clienteJson)}');
-      print('=========================');
-
-      final response = await http.post(
-        Uri.parse(Constants.registerClientEndpoint),
-        headers: _headers,
-        body: jsonEncode(clienteJson),
+    } else {
+      _handleHttpError(response);
+      return ApiResponse<Cliente>(
+        success: false,
+        message: 'Error en el registro',
+        data: null,
       );
-
-      print('=== RESPUESTA REGISTRO CLIENTE ===');
-      print('Status Code: ${response.statusCode}');
-      print('Response Body: ${response.body}');
-      print('=================================');
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        try {
-          final data = jsonDecode(response.body);
-          
-          if (data is Map<String, dynamic>) {
-            return ApiResponse<Cliente>(
-              success: true,
-              message: 'Cliente registrado exitosamente',
-              data: Cliente.fromJson(data),
-            );
-          } else {
-            return ApiResponse<Cliente>(
-              success: true,
-              message: 'Cliente registrado exitosamente',
-              data: clienteParaRegistro,
-            );
-          }
-        } catch (e) {
-          print('Error parseando respuesta: $e');
-          return ApiResponse<Cliente>(
-            success: true,
-            message: 'Cliente registrado exitosamente',
-            data: clienteParaRegistro,
-          );
-        }
-      } else {
-        _handleHttpError(response);
-        return ApiResponse<Cliente>(
-          success: false,
-          message: 'Error en el registro',
-          data: null,
-        );
-      }
-    } catch (e) {
-      print('Error en registerClient: $e');
-      throw Exception('Error registrando cliente: $e');
     }
+  } catch (e) {
+    print('Error en registerClient: $e');
+    throw Exception('Error registrando cliente: $e');
   }
+}
+
 
   static Future<ApiResponse<dynamic>> registerUser(Usuario usuario) async {
     try {
@@ -460,7 +522,7 @@ static Future<ApiResponse<dynamic>> verifyCodeAndLogin(String email, String pass
       final response = await http.post(
         Uri.parse(Constants.requestPasswordResetEndpoint),
         headers: _headers,
-        body: jsonEncode({'correo': email}),
+        body: jsonEncode({'Email': email}),
       );
       _handleHttpError(response);
       final data = jsonDecode(response.body);
@@ -523,19 +585,68 @@ static Future<ApiResponse<dynamic>> verifyCodeAndLogin(String email, String pass
     }
   }
 
-  static Future<ApiResponse<List<Cliente>>> getAllClients(String token) async {
-    try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/admin/clients'),
-        headers: _headersWithToken(token),
-      );
-      _handleHttpError(response);
-      final data = jsonDecode(response.body);
-      return ApiResponse<List<Cliente>>.fromJson(data, (Object? json) => (json as List).map((i) => Cliente.fromJson(i as Map<String, dynamic>)).toList());
-    } catch (e) {
-      throw Exception('Error fetching clients: $e');
-    }
+  static Future<ApiResponse<Cliente>> getClientProfile(String token, int idCliente) async {
+  try {
+    final response = await http.get(
+      Uri.parse('$_baseUrl/Clientes/$idCliente'),
+      headers: _headersWithToken(token),
+    );
+    _handleHttpError(response);
+    final data = jsonDecode(response.body);
+    return ApiResponse<Cliente>.fromJson(
+      data, 
+      (Object? json) => Cliente.fromJson(json as Map<String, dynamic>)
+    );
+  } catch (e) {
+    throw Exception('Error obteniendo perfil del cliente: $e');
   }
+}
+
+static Future<ApiResponse<Usuario>> getUserProfile(String token, int idUsuario) async {
+  try {
+    final response = await http.get(
+      Uri.parse('$_baseUrl/Usuarios/$idUsuario'),
+      headers: _headersWithToken(token),
+    );
+    _handleHttpError(response);
+    final data = jsonDecode(response.body);
+    return ApiResponse<Usuario>.fromJson(
+      data,
+      (Object? json) => Usuario.fromJson(json as Map<String, dynamic>),
+    );
+  } catch (e) {
+    throw Exception('Error obteniendo perfil del usuario: $e');
+  }
+}
+
+
+
+ static Future<ApiResponse<List<Cliente>>> getAllClients(String token) async {
+  try {
+    final response = await http.get(
+      Uri.parse('${Constants.baseUrl}/Clientes'), // ✅ RUTA CORRECTA
+      headers: _headersWithToken(token),
+    );
+    
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return ApiResponse<List<Cliente>>(
+        success: true,
+        message: 'Clientes obtenidos exitosamente',
+        data: (data as List).map((i) => Cliente.fromJson(i as Map<String, dynamic>)).toList(),
+      );
+    } else {
+      _handleHttpError(response);
+      return ApiResponse<List<Cliente>>(
+        success: false,
+        message: 'Error obteniendo clientes',
+        data: null,
+      );
+    }
+  } catch (e) {
+    throw Exception('Error fetching clients: $e');
+  }
+}
 
   static Future<ApiResponse<List<Rol>>> getAllRoles(String token) async {
     try {
@@ -567,19 +678,32 @@ static Future<ApiResponse<dynamic>> verifyCodeAndLogin(String email, String pass
   }
 
   static Future<ApiResponse<Cliente>> updateClientProfileApi(String token, Cliente cliente) async {
-    try {
-      final response = await http.put(
-        Uri.parse('$_baseUrl/admin/clients/${cliente.idCliente}'),
-        headers: _headersWithToken(token),
-        body: jsonEncode(cliente.toJson()),
-      );
-      _handleHttpError(response);
+  try {
+    final response = await http.put(
+      Uri.parse('${Constants.baseUrl}/Clientes/${cliente.idCliente}'), // ✅ RUTA CORRECTA
+      headers: _headersWithToken(token),
+      body: jsonEncode(cliente.toJson()),
+    );
+    
+    if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
-      return ApiResponse<Cliente>.fromJson(data, (Object? json) => Cliente.fromJson(json as Map<String, dynamic>));
-    } catch (e) {
-      throw Exception('Error al actualizar cliente (admin): $e');
+      return ApiResponse<Cliente>(
+        success: true,
+        message: 'Cliente actualizado exitosamente',
+        data: Cliente.fromJson(data),
+      );
+    } else {
+      _handleHttpError(response);
+      return ApiResponse<Cliente>(
+        success: false,
+        message: 'Error actualizando cliente',
+        data: null,
+      );
     }
+  } catch (e) {
+    throw Exception('Error al actualizar cliente (admin): $e');
   }
+}
 
   static Future<ApiResponse<Usuario>> updateUsuarioStatus(String token, int idUsuario, bool newStatus) async {
     try {
@@ -609,4 +733,46 @@ static Future<ApiResponse<dynamic>> verifyCodeAndLogin(String email, String pass
       throw Exception('Error actualizando estado de cliente: $e');
     }
   }
+
+  static Future<ApiResponse<Cliente>> getClientById(String token, int idCliente) async {
+  try {
+    final response = await http.get(
+      Uri.parse('${Constants.baseUrl}/Clientes/$idCliente'), 
+      headers: _headersWithToken(token),
+    );
+    
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return ApiResponse<Cliente>(
+        success: true,
+        message: 'Cliente obtenido exitosamente',
+        data: Cliente.fromJson(data),
+      );
+    } else {
+      _handleHttpError(response);
+      return ApiResponse<Cliente>(
+        success: false,
+        message: 'Error obteniendo cliente',
+        data: null,
+      );
+    }
+  } catch (e) {
+    throw Exception('Error al obtener el cliente por ID: $e');
+  }
+}
+
+static Future<ApiResponse<Cliente>> getCurrentClientProfile(String token, String email) async {
+  try {
+    final response = await http.get(
+      Uri.parse('${Constants.getClientEndpoint}?correo=$email'),
+      headers: _headersWithToken(token),
+    );
+    _handleHttpError(response);
+    final data = jsonDecode(response.body);
+    return ApiResponse<Cliente>.fromJson(data, (Object? json) => Cliente.fromJson(json as Map<String, dynamic>));
+  } catch (e) {
+    throw Exception('Error al obtener cliente por email: $e');
+  }
+}
+  
 }

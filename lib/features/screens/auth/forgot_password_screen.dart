@@ -29,14 +29,17 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final email = _emailController.text.trim();
 
+      // Pedimos el reset
       final errorMessage = await authProvider.forgotPassword(email);
+
+      // Depuración en consola
+      print('🔄 forgotPassword response: $errorMessage');
 
       if (!mounted) return;
 
       if (errorMessage == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Se ha enviado un código de verificación a tu correo.')),
-        );
+        // Si todo salió bien, navegamos
+        print('✅ Código enviado correctamente, navegando...');
         Navigator.of(context).pushNamed(
           AppRoutes.verification,
           arguments: {
@@ -45,6 +48,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           },
         );
       } else {
+        // Mostramos solo si realmente es error
+        print('⚠️ Error real: $errorMessage');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(errorMessage)),
         );

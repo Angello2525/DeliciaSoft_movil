@@ -31,24 +31,31 @@ class _ClientProfileState extends State<ClientProfile> {
   DateTime? _selectedDate;
 
   @override
-  void initState() {
-    super.initState();
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final client = authProvider.currentClient;
+void initState() {
+  super.initState();
 
-    _nameController = TextEditingController(text: client?.nombre ?? '');
-    _lastNameController = TextEditingController(text: client?.apellido ?? '');
-    _emailController = TextEditingController(text: client?.correo ?? '');
-    _documentTypeController = TextEditingController(text: client?.tipoDocumento ?? '');
-    _documentNumberController = TextEditingController(text: client?.numeroDocumento ?? '');
-    _addressController = TextEditingController(text: client?.direccion ?? '');
-    _neighborhoodController = TextEditingController(text: client?.barrio ?? '');
-    _cityController = TextEditingController(text: client?.ciudad ?? '');
-    _selectedDate = client?.fechaNacimiento;
-    _birthDateController = TextEditingController(
-        text: _selectedDate != null ? DateFormat('yyyy-MM-dd').format(_selectedDate!) : '');
-    _phoneNumberController = TextEditingController(text: client?.celular ?? '');
-  }
+  // Mueve la inicialización a una función separada
+  _nameController = TextEditingController();
+  _lastNameController = TextEditingController();
+  _emailController = TextEditingController();
+  _documentTypeController = TextEditingController();
+  _documentNumberController = TextEditingController();
+  _addressController = TextEditingController();
+  _neighborhoodController = TextEditingController();
+  _cityController = TextEditingController();
+  _birthDateController = TextEditingController();
+  _phoneNumberController = TextEditingController();
+
+  // Llama a la función para refrescar los datos del perfil
+  Future.microtask(() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+   await authProvider.refreshCurrentClientProfile();
+    // Después de cargar, reinicializa los controladores con los datos frescos.
+    if (mounted) {
+      _initializeControllers();
+    }
+  });
+}
 
   @override
   void dispose() {
@@ -63,6 +70,26 @@ class _ClientProfileState extends State<ClientProfile> {
     _birthDateController.dispose();
     _phoneNumberController.dispose();
     super.dispose();
+  }
+
+  // EN client_profile.dart, dentro de _ClientProfileState
+
+  void _initializeControllers() {
+    final client = Provider.of<AuthProvider>(context, listen: false).currentClient;
+
+    _nameController.text = client?.nombre ?? '';
+    _lastNameController.text = client?.apellido ?? '';
+    _emailController.text = client?.correo ?? '';
+    _documentTypeController.text = client?.tipoDocumento ?? '';
+    _documentNumberController.text = client?.numeroDocumento ?? '';
+    _addressController.text = client?.direccion ?? '';
+    _neighborhoodController.text = client?.barrio ?? '';
+    _cityController.text = client?.ciudad ?? '';
+    _selectedDate = client?.fechaNacimiento;
+    _birthDateController.text = _selectedDate != null ? DateFormat('yyyy-MM-dd').format(_selectedDate!) : '';
+    _phoneNumberController.text = client?.celular ?? '';
+
+    if(mounted) setState(() {});
   }
 
   Future<void> _selectDate(BuildContext context) async {
@@ -80,44 +107,48 @@ class _ClientProfileState extends State<ClientProfile> {
     }
   }
 
-  Future<void> _updateProfile() async {
-    if (_formKey.currentState!.validate()) {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final currentClient = authProvider.currentClient;
+Future<void> _updateProfile() async {
+  if (_formKey.currentState!.validate()) {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final currentClient = authProvider.currentClient;
 
-      if (currentClient == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No se pudo obtener la información del cliente.')),
-        );
-        return;
-      }
+    if (currentClient == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se pudo obtener la información del cliente.')),
+      );
+      return;
+    }
 
-      final updatedClientData = currentClient.copyWith(
-        nombre: _nameController.text.trim(),
-        apellido: _lastNameController.text.trim(),
-        correo: _emailController.text.trim(),
-        direccion: _addressController.text.trim(),
-        barrio: _neighborhoodController.text.trim(),
-        ciudad: _cityController.text.trim(), // Use _cityController.text
-        fechaNacimiento: _selectedDate,
-        celular: _phoneNumberController.text.trim(),
-      ).toJson(); // Convertir a Map<String, dynamic>
+    // Crear cliente actualizado manteniendo el ID original
+    final updatedClient = currentClient.copyWith(
+      nombre: _nameController.text.trim(),
+      apellido: _lastNameController.text.trim(),
+      correo: _emailController.text.trim(),
+      direccion: _addressController.text.trim(),
+      barrio: _neighborhoodController.text.trim(),
+      ciudad: _cityController.text.trim(),
+      fechaNacimiento: _selectedDate,
+      celular: _phoneNumberController.text.trim(),
+    );
 
-      final errorMessage = await authProvider.updateUserProfile(updatedClientData);
+    // Convertir a Map manteniendo el ID
+    final updatedClientData = updatedClient.toJson();
 
-      if (!mounted) return;
+    final errorMessage = await authProvider.updateUserProfile(updatedClientData);
 
-      if (errorMessage == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Perfil actualizado exitosamente.')),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMessage)),
-        );
-      }
+    if (!mounted) return;
+
+    if (errorMessage == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Perfil actualizado exitosamente.')),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMessage)),
+      );
     }
   }
+}
 
   @override
   Widget build(BuildContext context) {

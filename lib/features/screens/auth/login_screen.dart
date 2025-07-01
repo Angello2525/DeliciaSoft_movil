@@ -26,31 +26,38 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  Future<void> _login() async {
+Future<void> _login() async {
   if (_formKey.currentState!.validate()) {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final email = _emailController.text.trim();
     final password = _passwordController.text;
 
+    // Primero verificar que el usuario existe
     final userType = await authProvider.checkUserType(email);
 
     if (!mounted) return;
 
     if (userType == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Usuario no encontrado en...')),
+        const SnackBar(content: Text('El correo electrónico no está registrado en el sistema')),
       );
       return;
     }
 
-    // Agrega estas impresiones de depuración
-    debugPrint('Navegando a VerificationScreen desde LoginScreen:');
-    debugPrint('  Email: $email');
-    debugPrint('  Contraseña (longitud): ${password.length}'); // No imprimas la contraseña real por seguridad
-    debugPrint('  Tipo de usuario: $userType');
-    debugPrint('  isLogin: true');
+    // Verificar credenciales antes de enviar código
+    final loginResult = await authProvider.validateCredentials(email, password, userType);
+    
+    if (!mounted) return;
 
+    if (loginResult != null) {
+      // Error en las credenciales
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(loginResult)),
+      );
+      return;
+    }
 
+    // Si las credenciales son válidas, proceder con el código de verificación
     Navigator.of(context).pushNamed(
       AppRoutes.verification,
       arguments: {

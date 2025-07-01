@@ -33,14 +33,31 @@ class AuthService {
     }
   }
 
-  static Future<bool> registerClient(Cliente cliente) async {
-    try {
-      final apiResponse = await ApiService.registerClient(cliente);
-      return apiResponse.success;
-    } catch (e) {
-      throw Exception('Error en registro de cliente: $e');
-    }
+ static Future<bool> registerClient(Cliente cliente) async {
+  try {
+    final clienteParaRegistro = Cliente.forRegistration(
+      tipoDocumento: cliente.tipoDocumento,
+      numeroDocumento: cliente.numeroDocumento,
+      nombre: cliente.nombre,
+      apellido: cliente.apellido,
+      correo: cliente.correo,
+      contrasena: cliente.contrasena,
+      direccion: cliente.direccion,
+      barrio: cliente.barrio,
+      ciudad: cliente.ciudad,
+      fechaNacimiento: cliente.fechaNacimiento,
+      celular: cliente.celular,
+      estado: cliente.estado,
+    );
+
+    final apiResponse = await ApiService.registerClient(clienteParaRegistro);
+    return apiResponse.success;
+  } catch (e) {
+    throw Exception('Error en registro de cliente: $e');
   }
+}
+
+
 
   static Future<bool> registerUser(Usuario usuario) async {
     try {
@@ -55,14 +72,20 @@ class AuthService {
     await StorageService.clearAll();
   }
 
-  static Future<bool> requestPasswordReset(String email) async {
-    try {
-      final response = await ApiService.requestPasswordReset(email);
-      return response.success;
-    } catch (e) {
-      throw Exception('Error al solicitar restablecimiento de contraseña: $e');
+static Future<bool> requestPasswordReset(String email) async {
+  try {
+    final response = await ApiService.requestPasswordReset(email);
+    return response.success;
+  } catch (e) {
+    String errorMessage = e.toString();
+    // Si el mensaje contiene "enviado" es porque sí se envió el código
+    if (errorMessage.toLowerCase().contains('enviado') || 
+        errorMessage.toLowerCase().contains('código de recuperación')) {
+      return true; // Retornar éxito
     }
+    throw Exception('Error al solicitar restablecimiento de contraseña: $e');
   }
+}
 
   static Future<bool> resetPassword(String email, String verificationCode, String newPassword) async {
     try {
@@ -127,6 +150,23 @@ static Future<String?> checkUserType(String email) async {
     return response.data;  // data = adminType o clientType
   }
   return null;
+}
+
+static Future<String?> validateCredentials(String email, String password, String userType) async {
+  try {
+    final response = await ApiService.validateCredentials(email, password, userType);
+    if (response.success) {
+      return null; // Credenciales válidas
+    } else {
+      return response.message ?? 'Credenciales incorrectas';
+    }
+  } catch (e) {
+    String errorMessage = e.toString();
+    if (errorMessage.contains('Exception:')) {
+      errorMessage = errorMessage.replaceFirst('Exception:', '').trim();
+    }
+    return errorMessage.isEmpty ? 'Error validando credenciales' : errorMessage;
+  }
 }
 
 static Future<bool> checkIfAdmin(String email) async {
@@ -307,4 +347,13 @@ static Future<bool> sendVerificationCode(String email, String userType) async {
     throw Exception(errorMessage.isEmpty ? 'Error enviando código de verificación' : errorMessage);
   }
 }
+
+static Future<ApiResponse<Cliente>> getCurrentClientProfile(String email) async {
+  final token = await StorageService.getToken();
+  if (token == null) {
+    throw Exception('No authentication token found.');
+  }
+  return await ApiService.getCurrentClientProfile(token, email);
+}
+
 }

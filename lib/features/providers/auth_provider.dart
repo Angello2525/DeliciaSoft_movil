@@ -7,6 +7,7 @@ import '../models/api_response.dart';
 import '../services/auth_service.dart';
 import '../services/storage_service.dart';
 import '../utils/constants.dart';
+import '../services/api_service.dart';
 
 class AuthProvider with ChangeNotifier {
   Usuario? _currentUser;
@@ -69,6 +70,25 @@ class AuthProvider with ChangeNotifier {
   }
 }
 
+Future<String?> validateCredentials(String email, String password, String userType) async {
+  _isLoading = true;
+  _error = null;
+  notifyListeners();
+
+  try {
+    final response = await AuthService.validateCredentials(email, password, userType);
+    return response; // null si es válido, mensaje de error si no
+  } catch (e) {
+    _error = e.toString().contains('Exception:')
+        ? e.toString().replaceFirst('Exception:', '').trim()
+        : 'Error validando credenciales';
+    return _error;
+  } finally {
+    _isLoading = false;
+    notifyListeners();
+  }
+}
+
   Future<Map<String, dynamic>?> sendVerificationCode(String email, String userType) async {
   if (_isSendingCode) {
     return {'error': 'Ya se está enviando un código, por favor espera...'};
@@ -124,22 +144,29 @@ class AuthProvider with ChangeNotifier {
           await StorageService.saveToken(_token!);
           await StorageService.saveUserType(_userType!);
 
-          final userDataMap = response.user as Map<String, dynamic>?;
-          if (userDataMap != null) {
-            if (_userType == Constants.adminType) {
-              _currentUser = Usuario.fromJson(userDataMap);
-              _currentClient = null; // Limpia el otro tipo de usuario
-              await StorageService.saveUserData(_currentUser!.toJson());
-            } else if (_userType == Constants.clientType) {
-              _currentClient = Cliente.fromJson(userDataMap);
-              _currentUser = null; // Limpia el otro tipo de usuario
-              await StorageService.saveUserData(_currentClient!.toJson());
-            }
-          } else {
-            debugPrint('Advertencia: El campo "user" es null en la respuesta de login.');
-            _error = 'Datos de usuario incompletos recibidos. Intente de nuevo.';
-            _isAuthenticated = false;
+    // Dentro del if (response.success) después de asignar _token y _userType
+    if (_token != null && _userType != null) {
+      await StorageService.saveToken(_token!);
+      await StorageService.saveUserType(_userType!);
+
+      final userDataMap = response.user as Map<String, dynamic>?;
+      if (userDataMap != null) {
+       // Alrededor de la línea 100-120, reemplaza esta sección:
+          if (_userType == Constants.adminType) {
+            _currentUser = Usuario.fromJson(userDataMap);
+            _currentClient = null;
+            await StorageService.saveUserData(_currentUser!.toJson());
+          } else if (_userType == Constants.clientType) {
+            _currentClient = Cliente.fromJson(userDataMap);
+            _currentUser = null;
+            await StorageService.saveUserData(_currentClient!.toJson());
           }
+      } else {
+        debugPrint('Advertencia: El campo "user" es null en la respuesta de login.');
+        _error = 'Datos de usuario incompletos recibidos. Intente de nuevo.';
+        _isAuthenticated = false;
+      }
+    }
         } else { // Bloque ELSE si token o userType son nulos
           debugPrint('Advertencia: Token o UserType son null en la respuesta de login.');
           _error = 'Error en la respuesta de autenticación: token o tipo de usuario faltante.';
@@ -258,11 +285,11 @@ Future<void> initialize() async {
             final userDataMap = response.user as Map<String, dynamic>;
             if (_userType == Constants.adminType) {
               _currentUser = Usuario.fromJson(userDataMap);
-              _currentClient = null; // Limpia el otro tipo de usuario
+              _currentClient = null;
               await StorageService.saveUserData(_currentUser!.toJson());
             } else if (_userType == Constants.clientType) {
               _currentClient = Cliente.fromJson(userDataMap);
-              _currentUser = null; // Limpia el otro tipo de usuario
+              _currentUser = null;
               await StorageService.saveUserData(_currentClient!.toJson());
             }
           } else {
@@ -368,29 +395,41 @@ Future<void> logout() async {
   }
 
   Future<String?> forgotPassword(String email) async {
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
-    try {
-      final success = await AuthService.requestPasswordReset(email);
-      if (success) {
-        return null;
-      } else {
-        _error = 'Error al solicitar restablecimiento de contraseña.';
-        return _error;
-      }
-    } catch (e) {
-      _error = e.toString().contains('Exception:')
-          ? e.toString().replaceFirst('Exception:', '').trim()
-          : 'Error al solicitar restablecimiento de contraseña';
-      if (kDebugMode) {
-        print('Error en AuthProvider forgotPassword: $_error');
-      }
+  _isLoading = true;
+  _error = null;
+  notifyListeners();
+  try {
+    final success = await AuthService.requestPasswordReset(email);
+    if (success) {
+      return null; // Éxito, no hay error
+    } else {
+      _error = 'Error al solicitar restablecimiento de contraseña.';
       return _error;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
     }
+  } catch (e) {
+    String errorMessage = e.toString();
+    if (errorMessage.contains('Exception:')) {
+      errorMessage = errorMessage.replaceFirst('Exception:', '').trim();
+    }
+    
+    // Si el mensaje contiene "enviado" significa que fue exitoso
+    if ((errorMessage.toLowerCase().contains('enviado')) || 
+    (errorMessage.toLowerCase().contains('código de recuperación'))) {
+      return null; // Éxito, no es un error
+    }
+    
+    _error = errorMessage.isNotEmpty 
+        ? errorMessage 
+        : 'Error al solicitar restablecimiento de contraseña';
+    if (kDebugMode) {
+      print('Error en AuthProvider forgotPassword: $_error');
+    }
+    return _error;
+  } finally {
+    _isLoading = false;
+    notifyListeners();
+  }
+
   }
 
 Future<String?> resetPassword(String email, String verificationCode, String newPassword) async {
@@ -419,31 +458,87 @@ Future<String?> resetPassword(String email, String verificationCode, String newP
   }
 }
 
+Future<void> fetchCurrentClientProfile() async {
+  if (_userType != Constants.clientType || _currentClient == null) return;
+
+  _isLoading = true;
+  notifyListeners();
+
+  try {
+    final token = await StorageService.getToken();
+    if (token == null) throw Exception('Token no encontrado');
+
+    // ===== AQUÍ USAMOS EL NUEVO MÉTODO DE ApiService =====
+    final apiResponse = await ApiService.getClientById(token, _currentClient!.idCliente);
+
+    if (apiResponse.success && apiResponse.data != null) {
+      _currentClient = apiResponse.data; // El dato ya es un objeto Cliente
+      await StorageService.saveUserData(_currentClient!.toJson()); // Actualiza el storage
+    } else {
+      // Si la respuesta no fue exitosa, usa el mensaje del API
+      throw Exception(apiResponse.message ?? 'Error al cargar el perfil del cliente');
+    }
+  } catch (e) {
+    print('Error en fetchCurrentClientProfile: $e');
+    // Puedes decidir si mostrar un error al usuario aquí
+  } finally {
+    _isLoading = false;
+    notifyListeners();
+  }
+}
+
 Future<String?> updateUserProfile(Map<String, dynamic> userData) async {
   _isLoading = true;
   _error = null;
   notifyListeners();
 
   try {
-    // Crear Usuario desde el Map
-    final usuario = Usuario.fromJson(userData);
-    
-    final response = await AuthService.updateAdminProfile(usuario);
-    
-    if (response.success) {
-      // Actualizar currentUser con los nuevos datos
-      if (response.data != null) {
-        _currentUser = response.data as Usuario;
-        // Guardar los datos actualizados en storage
-        await StorageService.saveUserData(_currentUser!.toJson());
-      }
-      return null; // Sin error
-    } else {
-      _error = response.message.isNotEmpty ? response.message : 'Error al actualizar perfil';
+    if (_userType == null) {
+      _error = 'Tipo de usuario no definido para actualizar perfil.';
       return _error;
     }
+
+    if (_userType == Constants.adminType) {
+      // Para usuarios admin
+      final usuario = Usuario.fromJson(userData);
+      final response = await AuthService.updateAdminProfile(usuario);
+      
+      if (response.success) {
+        if (response.data != null) {
+          _currentUser = response.data as Usuario;
+          await StorageService.saveUserData(_currentUser!.toJson());
+        }
+        return null;
+      } else {
+        _error = response.message.isNotEmpty ? response.message : 'Error al actualizar perfil';
+        return _error;
+      }
+    } else if (_userType == Constants.clientType) {
+      // Para clientes
+      final cliente = Cliente.fromJson(userData);
+      final response = await AuthService.updateClientProfile(cliente);
+      
+      if (response.success) {
+        if (response.data != null) {
+          _currentClient = response.data as Cliente;
+          await StorageService.saveUserData(_currentClient!.toJson());
+        }
+        return null;
+      } else {
+        _error = response.message.isNotEmpty ? response.message : 'Error al actualizar perfil';
+        return _error;
+      }
+    }
+
+    _error = 'Tipo de usuario desconocido al actualizar perfil';
+    return _error;
   } catch (e) {
-    _error = 'Error al actualizar perfil: $e';
+    _error = e.toString().contains('Exception:')
+        ? e.toString().replaceFirst('Exception:', '').trim()
+        : 'Error al actualizar perfil';
+    if (kDebugMode) {
+      print('Error al actualizar perfil: $_error');
+    }
     return _error;
   } finally {
     _isLoading = false;
@@ -515,4 +610,76 @@ Future<String?> updateUserProfile(Map<String, dynamic> userData) async {
       notifyListeners();
     }
   }
+
+  
+
+  Future<void> loadProfileFromApi() async {
+  if (_token == null || _userType == null) {
+    _error = 'No hay sesión activa para cargar perfil';
+    notifyListeners();
+    return;
+  }
+
+  _isLoading = true;
+  notifyListeners();
+
+  try {
+    if (_userType == Constants.adminType) {
+      // Trae perfil del admin
+      final response = await ApiService.getUserProfile(_token!, _currentUser?.idUsuario ?? 0);
+      if (response.success && response.data != null) {
+        _currentUser = response.data;
+        await StorageService.saveUserData(_currentUser!.toJson());
+      } else {
+        _error = response.message.isNotEmpty ? response.message : 'Error al obtener perfil de admin';
+      }
+    } else if (_userType == Constants.clientType) {
+      // Trae perfil del cliente
+      final response = await ApiService.getClientProfile(_token!, _currentClient?.idCliente ?? 0);
+      if (response.success && response.data != null) {
+        _currentClient = response.data;
+        await StorageService.saveUserData(_currentClient!.toJson());
+      } else {
+        _error = response.message.isNotEmpty ? response.message : 'Error al obtener perfil de cliente';
+      }
+    }
+  } catch (e) {
+    _error = 'Error cargando perfil desde API: $e';
+  } finally {
+    _isLoading = false;
+    notifyListeners();
+  }
+}
+
+Future<String?> refreshCurrentClientProfile() async {
+  if (_userType != Constants.clientType || _currentClient == null) {
+    return 'Solo disponible para clientes autenticados';
+  }
+  
+  _isLoading = true;
+  _error = null;
+  notifyListeners();
+
+  try {
+    final response = await AuthService.getCurrentClientProfile(_currentClient!.correo);
+    
+    if (response.success && response.data != null) {
+      _currentClient = response.data as Cliente;
+      await StorageService.saveUserData(_currentClient!.toJson());
+      return null;
+    } else {
+      _error = response.message.isNotEmpty ? response.message : 'Error al obtener perfil del cliente';
+      return _error;
+    }
+  } catch (e) {
+    _error = e.toString().contains('Exception:')
+        ? e.toString().replaceFirst('Exception:', '').trim()
+        : 'Error al obtener perfil del cliente';
+    return _error;
+  } finally {
+    _isLoading = false;
+    notifyListeners();
+  }
+}
+
 }
