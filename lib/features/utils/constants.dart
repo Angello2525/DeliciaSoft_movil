@@ -11,8 +11,6 @@ class Constants {
   static const String getUserEndpoint = '$baseUrl/Usuarios';
   static const String getRolesEndpoint = '$baseUrl/rols';
 
-  
-  // NUEVOS ENDPOINTS DE AUTH
   static const String sendVerificationCodeEndpoint = '$baseUrl/Auth/send-verification-code';
   static const String verifyCodeAndLoginEndpoint = '$baseUrl/Auth/verify-code-and-login';
   static const String requestPasswordResetEndpoint = '$baseUrl/Auth/request-password-reset';

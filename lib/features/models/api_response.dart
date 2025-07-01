@@ -122,6 +122,12 @@ class PasswordResetResponse {
     required this.message,
   });
 
-  factory PasswordResetResponse.fromJson(Map<String, dynamic> json) => _$PasswordResetResponseFromJson(json);
+  factory PasswordResetResponse.fromJson(Map<String, dynamic> json) {
+  return PasswordResetResponse(
+    success: json['success'] as bool? ?? false,
+    message: json['message']?.toString() ?? '',
+  );
+}
+
   Map<String, dynamic> toJson() => _$PasswordResetResponseToJson(this);
 }

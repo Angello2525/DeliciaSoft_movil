@@ -67,6 +67,17 @@ class StorageService {
     return prefs.getBool(Constants.isLoggedInKey) ?? false;
   }
 
+  static Future<void> saveUserId(String userId) async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setString('user_id', userId);
+}
+
+  static Future<String?> getUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('user_id');
+  }
+
+
   // ==================== VERIFICATION CODE METHODS ====================
 
   static Future<void> saveVerificationCode(String code) async {
@@ -98,6 +109,11 @@ class StorageService {
     await prefs.remove(Constants.userKey);
     await prefs.remove(Constants.userTypeKey);
     await prefs.remove(Constants.isLoggedInKey);
+    await prefs.remove('auth_token');
+    await prefs.remove('refresh_token');
+    await prefs.remove('user_type');
+    await prefs.remove('user_data');
+    await prefs.remove('user_id');
   }
 
   // ==================== UTILITY METHODS ====================
