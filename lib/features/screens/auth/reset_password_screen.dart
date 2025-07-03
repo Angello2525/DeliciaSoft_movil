@@ -33,31 +33,59 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     super.dispose();
   }
 
-  Future<void> _resetPassword() async {
-    if (_formKey.currentState!.validate()) {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final password = _passwordController.text.trim();
+Future<void> _resetPassword() async {
+  if (_formKey.currentState!.validate()) {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final password = _passwordController.text.trim();
 
-      final errorMessage = await authProvider.resetPassword(
-        widget.email,
-        widget.verificationCode,
-        password,
-      );
+    final errorMessage = await authProvider.resetPassword(
+      widget.email,
+      widget.verificationCode,
+      password,
+    );
 
-      if (!mounted) return;
+    if (!mounted) return;
 
-      if (errorMessage == null) {
+    if (errorMessage == null) {
+      final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      final isChangePassword = args?['isChangePassword'] ?? false;
+      final userType = args?['userType'];
+
+      if (isChangePassword) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Contraseña cambiada correctamente.'), backgroundColor: Colors.green),
+        );
+
+        // Definimos la ruta de perfil según tipo de usuario
+        String targetRoute = AppRoutes.homeNavigation; // por defecto
+        if (userType == 'admin') {
+          targetRoute = AppRoutes.adminProfile;
+        } else if (userType == 'client') {
+          targetRoute = AppRoutes.clientProfile;
+        }
+
+        // Quitamos todo el historial y vamos directo al perfil
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          targetRoute,
+          (route) => false,
+        );
+      } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Contraseña restablecida correctamente.')),
         );
-        Navigator.of(context).pushReplacementNamed(AppRoutes.login);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMessage)),
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          AppRoutes.login,
+          (route) => false,
         );
       }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMessage)),
+      );
     }
   }
+}
+
 
   @override
   Widget build(BuildContext context) {

@@ -5,7 +5,7 @@ part 'cliente.g.dart';
 @JsonSerializable()
 class Cliente {
   @JsonKey(name: 'idCliente')
-  final int idCliente; // Cambiar a int no nullable, usar 0 para nuevos registros
+  final int idCliente;
   
   @JsonKey(name: 'tipoDocumento')
   final String tipoDocumento;
@@ -48,11 +48,11 @@ class Cliente {
   final bool estado;
 
   Cliente({
-    this.idCliente = 0, // Valor por defecto 0 para nuevos registros
+    this.idCliente = 0,
     required this.tipoDocumento,
     required this.numeroDocumento,
-    required this.nombre,   
-    required this.apellido, 
+    required this.nombre,
+    required this.apellido,
     required this.correo,
     this.contrasena,
     required this.direccion,
@@ -63,30 +63,45 @@ class Cliente {
     required this.estado,
   });
 
-factory Cliente.fromJson(Map<String, dynamic> json) {
-  return Cliente(
-    idCliente: json['idCliente'] as int? ?? 0,
-    tipoDocumento: json['tipoDocumento']?.toString() ?? 'CC', // ✅ Valor por defecto
-    numeroDocumento: json['numeroDocumento']?.toString() ?? '', // ✅ Asegurar que no sea null
-    nombre: json['nombre']?.toString() ?? '',
-    apellido: json['apellido']?.toString() ?? '',
-    correo: json['correo']?.toString() ?? '',
-    contrasena: json['contrasena']?.toString(),
-    direccion: json['direccion']?.toString() ?? '',
-    barrio: json['barrio']?.toString() ?? '',
-    ciudad: json['ciudad']?.toString() ?? '',
-    fechaNacimiento: json['fechaNacimiento'] != null 
-        ? _fromJsonFecha(json['fechaNacimiento'].toString())
-        : DateTime.now(),
-    celular: json['celular']?.toString() ?? '',
-    estado: json['estado'] as bool? ?? true,
-  );
-}
-  
-  Map<String, dynamic> toJson() {
-    final json = _$ClienteToJson(this);
-    // Siempre incluir idCliente, la API manejará el autoincremento
-    return json;
+  factory Cliente.fromJson(Map<String, dynamic> json) {
+    return Cliente(
+      idCliente: json['idCliente'] as int? ?? 0,
+      tipoDocumento: json['tipoDocumento']?.toString() ?? 'CC',
+      numeroDocumento: json['numeroDocumento']?.toString() ?? '',
+      nombre: json['nombre']?.toString() ?? '',
+      apellido: json['apellido']?.toString() ?? '',
+      correo: json['correo']?.toString() ?? '',
+      contrasena: json['hashContraseña']?.toString(), // usa el nombre real de la API
+      direccion: json['direccion']?.toString() ?? '',
+      barrio: json['barrio']?.toString() ?? '',
+      ciudad: json['ciudad']?.toString() ?? '',
+      fechaNacimiento: json['fechaNacimiento'] != null
+          ? _fromJsonFecha(json['fechaNacimiento'].toString())
+          : DateTime.now(),
+      celular: json['celular']?.toString() ?? '',
+      estado: json['estado'] as bool? ?? true,
+    );
+  }
+
+  Map<String, dynamic> toJson() => _$ClienteToJson(this);
+
+  /// ✅ Para actualización (PUT): siempre incluir hashContraseña
+  Map<String, dynamic> toJsonForUpdate() {
+    return {
+      'idCliente': idCliente,
+      'tipoDocumento': tipoDocumento,
+      'numeroDocumento': numeroDocumento,
+      'nombre': nombre,
+      'apellido': apellido,
+      'correo': correo,
+      'hashContraseña': contrasena ?? "",
+      'direccion': direccion,
+      'barrio': barrio,
+      'ciudad': ciudad,
+      'fechaNacimiento': _toJsonFecha(fechaNacimiento),
+      'celular': celular,
+      'estado': estado,
+    };
   }
 
   Cliente copyWith({
@@ -121,14 +136,13 @@ factory Cliente.fromJson(Map<String, dynamic> json) {
     );
   }
 
- String get fullName => '$nombre $apellido'.trim();
+  String get fullName => '$nombre $apellido'.trim();
 
-  // Método para crear una instancia para registro (con idCliente = 0)
   static Cliente forRegistration({
     required String tipoDocumento,
     required String numeroDocumento,
-    required String nombre,   
-    required String apellido, 
+    required String nombre,
+    required String apellido,
     required String correo,
     String? contrasena,
     required String direccion,
@@ -139,7 +153,7 @@ factory Cliente.fromJson(Map<String, dynamic> json) {
     bool estado = true,
   }) {
     return Cliente(
-      idCliente: 0, // Siempre 0 para nuevos registros
+      idCliente: 0,
       tipoDocumento: tipoDocumento,
       numeroDocumento: numeroDocumento,
       nombre: nombre,
@@ -156,14 +170,14 @@ factory Cliente.fromJson(Map<String, dynamic> json) {
   }
 
   static DateTime _fromJsonFecha(String date) {
-  try {
-    return DateTime.parse(date);
-  } catch (e) {
-    print('Error parsing date: $date, using current date');
-    return DateTime.now();
+    try {
+      return DateTime.parse(date);
+    } catch (e) {
+      print('Error parsing date: $date, using current date');
+      return DateTime.now();
+    }
   }
-}
 
-  // Conversión personalizada para fecha
-  static String _toJsonFecha(DateTime date) => date.toIso8601String().split('T')[0];
+  static String _toJsonFecha(DateTime date) =>
+      date.toIso8601String().split('T')[0];
 }

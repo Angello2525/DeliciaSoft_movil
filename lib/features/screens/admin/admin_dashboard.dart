@@ -24,8 +24,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
         title: const Text('Panel de Administrador'),
         automaticallyImplyLeading: false, 
       ),
-      body: LoadingWidget(
-        isLoading: authProvider.isLoading,
+     body: LoadingWidget(
+    isLoading: authProvider.isLoading,
         child: user == null
             ? const Center(child: Text('Cargando información del administrador...'))
             : SingleChildScrollView(

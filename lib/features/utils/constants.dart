@@ -2,12 +2,13 @@ class Constants {
   // API Configuration
   static const String baseUrl = 'http://deliciasoft.somee.com/api';
 
-  // API Endpoints ORIGINALES
+  // API Endpoints
   static const String loginClientEndpoint = '$baseUrl/Clientes';
   static const String loginUserEndpoint = '$baseUrl/Usuarios'; 
   static const String registerClientEndpoint = '$baseUrl/Clientes';
   static const String registerUserEndpoint = '$baseUrl/Usuarios';
   static const String getClientEndpoint = '$baseUrl/Clientes';
+  static const String getAdminEndpoint = '$baseUrl/Usuarios';
   static const String getUserEndpoint = '$baseUrl/Usuarios';
   static const String getRolesEndpoint = '$baseUrl/rols';
 
@@ -21,7 +22,6 @@ class Constants {
   // Email Configuration
   static const String emailPassword = 'xska kvfs wscx dris';
 
-
   // Storage Keys
   static const String tokenKey = 'auth_token';
   static const String refreshTokenKey = 'refresh_token';
@@ -30,9 +30,9 @@ class Constants {
   static const String userTypeKey = 'user_type';
   static const String verificationCodeKey = 'verification_code';
 
-  // User Types
+  // User Types (AHORA con los valores REALES del backend)
   static const String adminType = 'admin';
-  static const String clientType = 'client';
+  static const String clientType = 'cliente';
 
   // Validation Messages
   static const String requiredField = 'Este campo es requerido';

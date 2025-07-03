@@ -77,7 +77,6 @@ Future<void> _sendInitialCode() async {
   print('================================');
 }
 
-// REEMPLAZAR el método _verifyCode en verification_screen.dart
 Future<void> _verifyCode() async {
   if (_formKey.currentState!.validate()) {
     _showDebugInfo();
@@ -91,7 +90,7 @@ Future<void> _verifyCode() async {
     if (widget.isLogin) {
       if (widget.password != null && widget.userType != null) {
         print('=== INICIANDO VERIFICACIÓN Y LOGIN ===');
-        
+
         errorMessage = await authProvider.verifyCodeAndLogin(
           widget.email,
           widget.password!,
@@ -101,14 +100,7 @@ Future<void> _verifyCode() async {
 
         if (!mounted) return;
 
-        print('=== RESULTADO VERIFICACIÓN ===');
-        print('Error message: $errorMessage');
-        print('Auth provider isAuthenticated: ${authProvider.isAuthenticated}');
-        print('Auth provider userType: ${authProvider.userType}');
-        print('=============================');
-
         if (errorMessage == null && authProvider.isAuthenticated) {
-          // Login exitoso
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text(Constants.loginSuccess),
@@ -116,52 +108,18 @@ Future<void> _verifyCode() async {
             ),
           );
 
-          // Esperar un momento para que se complete la actualización del provider
           await Future.delayed(const Duration(milliseconds: 100));
 
           if (!mounted) return;
-
-          // Navegar según el tipo de usuario
-          final userType = authProvider.userType;
-          print('=== NAVEGANDO ===');
-          print('UserType para navegación: $userType');
-          print('================');
-
-        if (userType == Constants.adminType) {
-            Navigator.of(context).pushReplacementNamed(AppRoutes.homeNavigation);
-          } else if (userType == Constants.clientType) {
-            Navigator.of(context).pushReplacementNamed(AppRoutes.homeNavigation);
-          } else {
-            // Fallback: intentar navegar basado en lo que tenemos
-            print('Warning: UserType no reconocido, usando fallback');
-            if (widget.userType == Constants.adminType) {
-              Navigator.of(context).pushReplacementNamed(AppRoutes.adminDashboard);
-            } else if (widget.userType == Constants.clientType) {
-              Navigator.of(context).pushReplacementNamed(AppRoutes.homeNavigation);
-            } else {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Error: Tipo de usuario no válido'),
-                  backgroundColor: Colors.red,
-                ),
-              );
-            }
-          }
+          Navigator.of(context).pushReplacementNamed(AppRoutes.homeNavigation);
         } else {
-          // Error en el login
           final displayMessage = errorMessage ?? 'Error desconocido en la verificación';
-          
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(displayMessage),
-              backgroundColor: Colors.red,
-              duration: const Duration(seconds: 4),
-            ),
+            SnackBar(content: Text(displayMessage), backgroundColor: Colors.red),
           );
-          
-          // Si el error es de código inválido/expirado, limpiar el campo
-          if (displayMessage.toLowerCase().contains('código') && 
-              (displayMessage.toLowerCase().contains('inválido') || 
+
+          if (displayMessage.toLowerCase().contains('código') &&
+              (displayMessage.toLowerCase().contains('inválido') ||
                displayMessage.toLowerCase().contains('expirado'))) {
             _codeController.clear();
           }
@@ -169,34 +127,46 @@ Future<void> _verifyCode() async {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Error interno: Faltan datos para el inicio de sesión.'),
+            content: Text('Error interno: faltan datos para el inicio de sesión.'),
             backgroundColor: Colors.red,
           ),
         );
       }
     } else if (widget.isPasswordReset) {
-      // Flujo de reset de contraseña
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Código validado. Redirigiendo para restablecer contraseña...')),
-      );
-      
+      // Nuevo: revisamos si venimos desde cambio de contraseña
+      final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      final isChangePassword = args?['isChangePassword'] ?? false;
+
+      if (isChangePassword) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Código validado. Ingresa tu nueva contraseña...')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Código validado. Redirigiendo para restablecer contraseña...')),
+        );
+      }
+
       if (!mounted) return;
-      
-      Navigator.of(context).pushReplacementNamed(
-        AppRoutes.resetPassword,
-        arguments: {
-          'email': widget.email,
-          'verificationCode': verificationCode,
-        },
-      );
+     Navigator.of(context).pushNamed(
+      AppRoutes.resetPassword,
+      arguments: {
+        'email': widget.email,
+        'verificationCode': verificationCode,
+        'isChangePassword': isChangePassword,
+        'userType': widget.userType, // pasa el tipo de usuario!
+      },
+    );
+
+
     } else {
-      // Otros flujos (registro, etc.)
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Flujo de verificación no manejado para registro o similar.')),
+        const SnackBar(content: Text('Flujo de verificación no manejado para registro u otros casos.')),
       );
     }
   }
 }
+
 
  Future<void> _resendCode() async {
   final authProvider = Provider.of<AuthProvider>(context, listen: false);

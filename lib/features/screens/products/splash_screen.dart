@@ -22,17 +22,20 @@ class _SplashScreenState extends State<SplashScreen> {
   await Future.delayed(const Duration(seconds: 2));
   if (!mounted) return;
 
-
   final authProvider = Provider.of<AuthProvider>(context, listen: false);
   await authProvider.initialize();
 
-  if (!mounted) return;
+  // ✅ Nuevo: cargar perfil desde la API (si está logueado)
+  if (authProvider.isAuthenticated) {
+    await authProvider.loadProfileFromApi();
+  }
 
 
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (context) => const HomeNavigation()), 
-    );
+  Navigator.of(context).pushReplacement(
+    MaterialPageRoute(builder: (context) => const HomeNavigation()), 
+  );
 }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(

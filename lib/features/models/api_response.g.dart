@@ -78,6 +78,7 @@ PasswordResetResponse _$PasswordResetResponseFromJson(
 ) => PasswordResetResponse(
   success: json['success'] as bool,
   message: json['message'] as String,
+  userType: json['userType'] as String,
 );
 
 Map<String, dynamic> _$PasswordResetResponseToJson(
@@ -85,4 +86,5 @@ Map<String, dynamic> _$PasswordResetResponseToJson(
 ) => <String, dynamic>{
   'success': instance.success,
   'message': instance.message,
+  'userType': instance.userType,
 };
