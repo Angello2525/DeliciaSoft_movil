@@ -28,47 +28,62 @@ class _LoginScreenState extends State<LoginScreen> {
 
 Future<void> _login() async {
   if (_formKey.currentState!.validate()) {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final email = _emailController.text.trim();
-    final password = _passwordController.text;
+    final password = _passwordController.text.trim();
 
-    // Primero verificar que el usuario existe
-    final userType = await authProvider.checkUserType(email);
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    // Primero verificar que el usuario existe y obtener el tipo (puede ser "admin", "usuario" o "cliente")
+    final userTypeFromBackend = await authProvider.checkUserType(email);
 
     if (!mounted) return;
 
-    if (userType == null) {
+    if (userTypeFromBackend == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('El correo electrónico no está registrado en el sistema')),
       );
       return;
     }
 
-    // Verificar credenciales antes de enviar código
-    final loginResult = await authProvider.validateCredentials(email, password, userType);
-    
-    if (!mounted) return;
-
-    if (loginResult != null) {
-      // Error en las credenciales
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(loginResult)),
-      );
-      return;
+    // Mapear admin → usuario para la API; cliente se mantiene
+    String userTypeForApi;
+    if (userTypeFromBackend == Constants.adminType) {
+      userTypeForApi = "usuario";
+    } else if (userTypeFromBackend == Constants.clientType) {
+      userTypeForApi = "cliente";
+    } else {
+      // Fallback: si no es admin ni cliente, usamos el que venga
+      userTypeForApi = userTypeFromBackend;
     }
 
-    // Si las credenciales son válidas, proceder con el código de verificación
-    Navigator.of(context).pushNamed(
-      AppRoutes.verification,
-      arguments: {
-        'email': email,
-        'password': password,
-        'userType': userType,
-        'isLogin': true,
-      },
-    );
+    // Validar credenciales antes de enviar el código
+    final loginResult = await authProvider.validateCredentials(email, password, userTypeForApi);
+
+    if (!mounted) return;
+
+    if (loginResult == null) {
+      // Login correcto, ahora navegar a la verificación
+      Navigator.of(context).pushNamed(
+        AppRoutes.verification,
+        arguments: {
+          'email': email,
+          'password': password,
+          'userType': userTypeForApi,
+          'isLogin': true,
+        },
+      );
+    } else {
+      // Mostrar mensaje de error
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(loginResult),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 }
+
 
   @override
   Widget build(BuildContext context) {

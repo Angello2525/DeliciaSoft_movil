@@ -10,6 +10,7 @@ import '../screens/admin/admin_profile.dart';
 import '../screens/client/client_dashboard.dart';
 import '../screens/client/client_profile.dart';
 import '../screens/home_navigation.dart';
+import '../screens/auth/change_password_screen.dart';
 
 class AppRoutes {
   static const String splash = '/';
@@ -23,12 +24,14 @@ class AppRoutes {
   static const String clientDashboard = '/client-dashboard';
   static const String clientProfile = '/client-profile';
   static const String homeNavigation = '/home-navigation';
+  static const String changePassword = '/change-password';
 
   static Map<String, WidgetBuilder> get routes => {
     splash: (context) => const SplashScreen(),
     login: (context) => const LoginScreen(),
     register: (context) => const RegisterScreen(),
     forgotPassword: (context) => const ForgotPasswordScreen(),
+    changePassword: (context) => const ChangePasswordScreen(),
     adminDashboard: (context) => const AdminDashboard(),
     adminProfile: (context) => const AdminProfile(),
     clientDashboard: (context) => const ClientDashboard(),

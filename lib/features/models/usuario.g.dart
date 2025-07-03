@@ -9,12 +9,12 @@ part of 'usuario.dart';
 Usuario _$UsuarioFromJson(Map<String, dynamic> json) => Usuario(
   idUsuario: (json['idUsuario'] as num?)?.toInt() ?? 0,
   tipoDocumento: json['tipoDocumento'] as String? ?? '',
-  documento: json['documento'] as String? ?? '',
+  documento: (json['documento'] as num?)?.toInt() ?? 0,
   nombre: json['nombre'] as String? ?? '',
   apellido: json['apellido'] as String? ?? '',
   correo: json['correo'] as String? ?? '',
   hashContrasena: json['hashContraseña'] as String?,
-  idRol: (json['idRol'] as num?)?.toInt() ?? 0,
+  idRol: (json['idRol'] as num?)?.toInt() ?? 2,
   estado: json['estado'] as bool? ?? true,
   idRolNavigation:
       json['idRolNavigation'] == null
