@@ -824,6 +824,7 @@ static Future<ApiResponse<Cliente>> getCurrentClientProfile(String token, String
       throw Exception('Failed to load Venta with ID $id: ${response.statusCode}');
     }
   }
+  
 
   // Nuevo método para obtener DetalleVenta por IdVenta
   static Future<List<DetalleVenta>> getDetalleVentaByVentaId(int idVenta) async {
@@ -891,6 +892,7 @@ static Future<ApiResponse<Cliente>> getCurrentClientProfile(String token, String
       throw Exception('Failed to load Cliente with ID $id: ${response.statusCode}');
     }
   }
+  
 
   static Future<Sede> getSedeById(int id) async {
     final response = await http.get(Uri.parse('$__baseUrl/Sedes/$id'));
@@ -986,6 +988,7 @@ static Future<ApiResponse<Cliente>> getCurrentClientProfile(String token, String
       throw Exception('Failed to update abono: ${response.statusCode} - ${response.body}');
     }
   }
+
 
   static Future<void> deleteAbono(int id) async {
     final response = await http.delete(Uri.parse('$__baseUrl/Abonos/$id'));

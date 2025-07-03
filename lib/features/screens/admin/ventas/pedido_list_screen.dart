@@ -27,6 +27,14 @@ class _PedidoListScreenState extends State<PedidoListScreen> {
   String _searchQuery = '';
   Set<int> _canceledPedidoIds = {};
 
+  // Define your refined color palette
+  static const Color _primaryRose = Color.fromRGBO(228, 48, 84, 1);
+  static const Color _darkGrey = Color(0xFF333333);
+  static const Color _lightGrey = Color(0xFFF5F5F5); // For main background
+  static const Color _mediumGrey = Color(0xFFE0E0E0); // For borders and dividers
+  static const Color _textGrey = Color(0xFF555555); // For general text
+  static const Color _accentYellow = Colors.amber; // Minimal yellow, can be adjusted further if needed
+
   @override
   void initState() {
     super.initState();
@@ -94,14 +102,14 @@ class _PedidoListScreenState extends State<PedidoListScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Confirmar Anulación'),
-          content: Text('¿Está seguro que desea anular el pedido Nro $pedidoId?'),
+          title: const Text('Confirmar Anulación', style: TextStyle(color: _darkGrey)),
+          content: Text('¿Está seguro que desea anular el pedido Nro $pedidoId?', style: const TextStyle(color: _textGrey)),
           actions: <Widget>[
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop(); // Dismiss dialog
               },
-              child: const Text('No'),
+              child: const Text('No', style: TextStyle(color: _primaryRose)),
             ),
             TextButton(
               onPressed: () {
@@ -110,10 +118,10 @@ class _PedidoListScreenState extends State<PedidoListScreen> {
                 });
                 Navigator.of(context).pop(); // Dismiss dialog
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Pedido Nro $pedidoId anulado.')),
+                  SnackBar(content: Text('Pedido Nro $pedidoId anulado.', style: const TextStyle(color: Colors.white))),
                 );
               },
-              child: const Text('Sí'),
+              child: const Text('Sí', style: TextStyle(color: Colors.red)),
             ),
           ],
         );
@@ -136,14 +144,14 @@ class _PedidoListScreenState extends State<PedidoListScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Error'),
-          content: Text(message),
+          title: const Text('Error', style: TextStyle(color: _darkGrey)),
+          content: Text(message, style: const TextStyle(color: _textGrey)),
           actions: <Widget>[
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
               },
-              child: const Text('OK'),
+              child: const Text('OK', style: TextStyle(color: _primaryRose)),
             ),
           ],
         );
@@ -154,8 +162,8 @@ class _PedidoListScreenState extends State<PedidoListScreen> {
   Widget _buildExpandableDetails(Pedido pedido) {
     if (pedido.idVenta == null) {
       return const Padding(
-        padding: EdgeInsets.all(8.0),
-        child: Text('Este pedido no tiene una venta asociada.'),
+        padding: EdgeInsets.all(16.0),
+        child: Text('Este pedido no tiene una venta asociada.', style: TextStyle(color: _textGrey)),
       );
     }
 
@@ -164,18 +172,18 @@ class _PedidoListScreenState extends State<PedidoListScreen> {
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Padding(
-            padding: EdgeInsets.all(8.0),
-            child: Center(child: CircularProgressIndicator()),
+            padding: EdgeInsets.all(16.0),
+            child: Center(child: CircularProgressIndicator(color: _primaryRose)),
           );
         } else if (snapshot.hasError) {
           return Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Text('Error al cargar detalles adicionales: ${snapshot.error}'),
+            padding: const EdgeInsets.all(16.0),
+            child: Text('Error al cargar detalles adicionales: ${snapshot.error}', style: const TextStyle(color: Colors.red)),
           );
         } else if (!snapshot.hasData) {
           return const Padding(
-            padding: EdgeInsets.all(8.0),
-            child: Text('No se encontraron detalles adicionales.'),
+            padding: EdgeInsets.all(16.0),
+            child: Text('No se encontraron detalles adicionales.', style: TextStyle(color: _textGrey)),
           );
         } else {
           final Venta venta = snapshot.data!['venta'];
@@ -194,26 +202,27 @@ class _PedidoListScreenState extends State<PedidoListScreen> {
                 _buildInfoRow('Método de Pago', venta.metodoPago),
                 _buildInfoRow('Tipo de Venta', venta.tipoVenta),
                 _buildInfoRow('Estado de Venta', venta.estadoVenta ? 'Completada' : 'Pendiente'),
-                const Divider(height: 20, thickness: 1),
+                const Divider(height: 30, thickness: 1, color: _mediumGrey),
                 const Text(
                   'Detalles de Venta:',
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Colors.deepPurple,
+                    color: _primaryRose, // Use the new primary rose
                   ),
                 ),
+                const SizedBox(height: 10),
                 if (detallesVenta.isEmpty)
                   const Padding(
                     padding: EdgeInsets.only(left: 8.0, top: 4.0),
-                    child: Text('No hay detalles de venta para esta venta.'),
+                    child: Text('No hay detalles de venta para esta venta.', style: TextStyle(color: _textGrey)),
                   ),
                 ...detallesVenta.map((detalle) => _buildDetalleVentaExpansionTile(detalle)),
-                const Divider(),
+                const Divider(height: 30, thickness: 1, color: _mediumGrey),
                 _buildInfoRow('Observaciones del Pedido', pedido.observaciones.isEmpty ? 'N/A' : pedido.observaciones),
                 _buildInfoRow('Mensaje Personalizado', pedido.mensajePersonalizado.isEmpty ? 'N/A' : pedido.mensajePersonalizado),
                 _buildInfoRow('Fecha de Entrega del Pedido', DateFormat('dd/MM/yyyy HH:mm').format(pedido.fechaEntrega)),
-                const SizedBox(height: 10),
+                const SizedBox(height: 20),
                 // Buttons Row
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
@@ -221,14 +230,15 @@ class _PedidoListScreenState extends State<PedidoListScreen> {
                     // Abonos Button
                     if (pedido.idPedido != null)
                       Padding(
-                        padding: const EdgeInsets.only(right: 8.0),
+                        padding: const EdgeInsets.only(right: 10.0),
                         child: ElevatedButton.icon(
                           onPressed: () => _showAbonosModal(pedido.idPedido!),
-                          icon: const Icon(Icons.account_balance_wallet),
-                          label: const Text('Abonos'),
+                          icon: const Icon(Icons.account_balance_wallet, color: Colors.white),
+                          label: const Text('Abonos', style: TextStyle(color: Colors.white)),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.blue, // Abonos button color
-                            foregroundColor: Colors.white, // Text color
+                            padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           ),
                         ),
                       ),
@@ -236,11 +246,12 @@ class _PedidoListScreenState extends State<PedidoListScreen> {
                     if (!_canceledPedidoIds.contains(pedido.idPedido))
                       ElevatedButton.icon(
                         onPressed: () => _cancelPedido(pedido.idPedido!),
-                        icon: const Icon(Icons.cancel),
-                        label: const Text('Anular Pedido'),
+                        icon: const Icon(Icons.cancel, color: Colors.white),
+                        label: const Text('Anular Pedido', style: TextStyle(color: Colors.white)),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.red, // Button color
-                          foregroundColor: Colors.white, // Text color
+                          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         ),
                       ),
                   ],
@@ -249,13 +260,13 @@ class _PedidoListScreenState extends State<PedidoListScreen> {
                   Align(
                     alignment: Alignment.centerRight,
                     child: Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
+                      padding: const EdgeInsets.only(top: 15.0),
                       child: Text(
                         'Pedido Anulado',
                         style: TextStyle(
                           color: Colors.red.shade700,
                           fontWeight: FontWeight.bold,
-                          fontSize: 16,
+                          fontSize: 18,
                         ),
                       ),
                     ),
@@ -275,19 +286,24 @@ class _PedidoListScreenState extends State<PedidoListScreen> {
           : Future.value(null),
       builder: (context, productSnapshot) {
         if (productSnapshot.connectionState == ConnectionState.waiting) {
-          return const ListTile(title: Text('Cargando producto...'));
+          return const ListTile(
+            title: Text('Cargando producto...', style: TextStyle(color: _textGrey)),
+            leading: CircularProgressIndicator(color: _primaryRose, strokeWidth: 2),
+          );
         } else if (productSnapshot.hasError) {
-          return ListTile(title: Text('Error al cargar producto: ${productSnapshot.error}'));
+          return ListTile(title: Text('Error al cargar producto: ${productSnapshot.error}', style: const TextStyle(color: Colors.red)));
         } else {
           final productoGeneral = productSnapshot.data;
           return Card(
-            margin: const EdgeInsets.symmetric(vertical: 4.0),
-            elevation: 0.5,
-            color: Colors.blueGrey[50],
+            margin: const EdgeInsets.symmetric(vertical: 8.0),
+            elevation: 2,
+            color: _lightGrey, // Slightly darker grey for inner cards
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             child: ExpansionTile(
+              tilePadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
               title: Text(
                 'Producto: ${productoGeneral?.nombreProducto ?? 'N/A'}',
-                style: const TextStyle(fontWeight: FontWeight.bold),
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: _darkGrey),
               ),
               children: [
                 Padding(
@@ -296,10 +312,10 @@ class _PedidoListScreenState extends State<PedidoListScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildInfoRow('Cantidad', detalle.cantidad?.toString() ?? 'N/A'),
-                      _buildInfoRow('Subtotal', detalle.subtotal?.toStringAsFixed(2) ?? 'N/A'),
-                      _buildInfoRow('IVA', detalle.iva?.toStringAsFixed(2) ?? 'N/A'),
-                      _buildInfoRow('Total', detalle.total?.toStringAsFixed(2) ?? 'N/A'),
-                      const SizedBox(height: 8.0),
+                      _buildInfoRow('Subtotal', '\$${detalle.subtotal?.toStringAsFixed(2) ?? 'N/A'}'),
+                      _buildInfoRow('IVA', '\$${detalle.iva?.toStringAsFixed(2) ?? 'N/A'}'),
+                      _buildInfoRow('Total', '\$${detalle.total?.toStringAsFixed(2) ?? 'N/A'}'),
+                      const SizedBox(height: 15.0),
                       if (detalle.idDetalleVenta != null)
                         FutureBuilder<List<DetalleAdicione>>(
                           future: ApiService.getDetalleAdicionesByDetalleVentaId(detalle.idDetalleVenta!),
@@ -307,17 +323,17 @@ class _PedidoListScreenState extends State<PedidoListScreen> {
                             if (adicionesSnapshot.connectionState == ConnectionState.waiting) {
                               return const Padding(
                                 padding: EdgeInsets.only(left: 8.0, top: 4.0),
-                                child: Text('Cargando adiciones...'),
+                                child: Text('Cargando adiciones...', style: TextStyle(color: _textGrey)),
                               );
                             } else if (adicionesSnapshot.hasError) {
                               return Padding(
                                 padding: const EdgeInsets.only(left: 8.0, top: 4.0),
-                                child: Text('Error al cargar adiciones: ${adicionesSnapshot.error}'),
+                                child: Text('  Error al cargar adiciones: ${adicionesSnapshot.error}', style: const TextStyle(color: Colors.red)),
                               );
                             } else if (!adicionesSnapshot.hasData || adicionesSnapshot.data!.isEmpty) {
                               return const Padding(
                                 padding: EdgeInsets.only(left: 8.0, top: 4.0),
-                                child: Text('No hay adiciones para este detalle de venta.'),
+                                child: Text('No hay adiciones para este detalle de venta.', style: TextStyle(color: _textGrey)),
                               );
                             } else {
                               return Column(
@@ -326,37 +342,38 @@ class _PedidoListScreenState extends State<PedidoListScreen> {
                                   const Text(
                                     'Adiciones:',
                                     style: TextStyle(
-                                      fontSize: 14,
+                                      fontSize: 16,
                                       fontWeight: FontWeight.bold,
-                                      color: Colors.blueAccent,
+                                      color: _primaryRose, // Use rose for sub-titles
                                     ),
                                   ),
+                                  const SizedBox(height: 8.0),
                                   ...adicionesSnapshot.data!.map((adicione) => FutureBuilder<Map<String, String>>(
                                         future: _fetchAdicionNames(adicione),
                                         builder: (context, namesSnapshot) {
                                           if (namesSnapshot.connectionState == ConnectionState.waiting) {
                                             return const Padding(
-                                              padding: EdgeInsets.symmetric(vertical: 2.0, horizontal: 8.0),
-                                              child: Text('  Cargando nombres de adiciones...'),
+                                              padding: EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
+                                              child: Text('  Cargando nombres de adiciones...', style: TextStyle(color: _textGrey)),
                                             );
                                           } else if (namesSnapshot.hasError) {
                                             return Padding(
-                                              padding: const EdgeInsets.symmetric(vertical: 2.0, horizontal: 8.0),
-                                              child: Text('  Error al cargar nombres: ${namesSnapshot.error}'),
+                                              padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
+                                              child: Text('  Error al cargar nombres: ${namesSnapshot.error}', style: const TextStyle(color: Colors.red)),
                                             );
                                           } else {
                                             final names = namesSnapshot.data!;
                                             return Padding(
-                                              padding: const EdgeInsets.symmetric(vertical: 2.0, horizontal: 8.0),
+                                              padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
                                               child: Column(
                                                 crossAxisAlignment: CrossAxisAlignment.start,
                                                 children: [
-                                                  Text('  - Adición: ${names['adicionNombre']}'),
-                                                  Text('    Sabor: ${names['saborNombre']}'),
-                                                  Text('    Relleno: ${names['rellenoNombre']}'),
-                                                  Text('    Cantidad: ${adicione.cantidadAdicionada?.toStringAsFixed(2) ?? 'N/A'}'),
-                                                  Text('    Precio Unitario: ${adicione.precioUnitario?.toStringAsFixed(2) ?? 'N/A'}'),
-                                                  Text('    Subtotal: ${adicione.subtotal?.toStringAsFixed(2) ?? 'N/A'}'),
+                                                  Text('  • Adición: ${names['adicionNombre']}', style: const TextStyle(color: _darkGrey)),
+                                                  Text('    Sabor: ${names['saborNombre']}', style: const TextStyle(color: _textGrey)),
+                                                  Text('    Relleno: ${names['rellenoNombre']}', style: const TextStyle(color: _textGrey)),
+                                                  Text('    Cantidad: ${adicione.cantidadAdicionada?.toStringAsFixed(2) ?? 'N/A'}', style: const TextStyle(color: _textGrey)),
+                                                  Text('    Precio Unitario: \$${adicione.precioUnitario?.toStringAsFixed(2) ?? 'N/A'}', style: const TextStyle(color: _textGrey)),
+                                                  Text('    Subtotal: \$${adicione.subtotal?.toStringAsFixed(2) ?? 'N/A'}', style: const TextStyle(color: _darkGrey, fontWeight: FontWeight.w500)),
                                                 ],
                                               ),
                                             );
@@ -444,16 +461,16 @@ class _PedidoListScreenState extends State<PedidoListScreen> {
 
   Widget _buildInfoRow(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2.0),
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             '$label: ',
-            style: const TextStyle(fontWeight: FontWeight.w600),
+            style: const TextStyle(fontWeight: FontWeight.w600, color: _darkGrey, fontSize: 15),
           ),
           Expanded(
-            child: Text(value),
+            child: Text(value, style: const TextStyle(color: _textGrey, fontSize: 15)),
           ),
         ],
       ),
@@ -463,13 +480,16 @@ class _PedidoListScreenState extends State<PedidoListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: _lightGrey, // Overall background color
       appBar: AppBar(
-        title: const Text('Lista de Pedidos'),
-        backgroundColor: const Color.fromARGB(255, 255, 68, 236),
+        title: const Text('Lista de Pedidos', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        backgroundColor: _primaryRose, // Use the new primary rose
+        elevation: 0, // No shadow for a flatter look
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh, color: Colors.white),
             onPressed: _reloadPedidos,
+            tooltip: 'Recargar Pedidos',
           ),
         ],
       ),
@@ -477,31 +497,42 @@ class _PedidoListScreenState extends State<PedidoListScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(20.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Pedidos',
+                  'Gestión de Pedidos',
                   style: TextStyle(
-                    fontSize: 24,
+                    fontSize: 28,
                     fontWeight: FontWeight.bold,
-                    color: Color.fromARGB(255, 255, 68, 236),
+                    color: _darkGrey, // Main title color
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 15),
                 TextField(
                   controller: _searchController,
                   decoration: InputDecoration(
                     labelText: 'Buscar por Nro. Pedido, Cliente o Fecha de Entrega',
+                    labelStyle: const TextStyle(color: _textGrey),
                     hintText: 'Ej. 123, Juan Pérez, 30/06/2025',
-                    prefixIcon: const Icon(Icons.search),
+                    hintStyle: const TextStyle(color: _mediumGrey),
+                    prefixIcon: const Icon(Icons.search, color: _primaryRose), // Rose search icon
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8.0),
+                      borderRadius: BorderRadius.circular(10.0),
+                      borderSide: const BorderSide(color: _mediumGrey),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10.0),
+                      borderSide: const BorderSide(color: _primaryRose, width: 2.0), // Rose border on focus
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10.0),
+                      borderSide: const BorderSide(color: _mediumGrey),
                     ),
                     suffixIcon: _searchQuery.isNotEmpty
                         ? IconButton(
-                            icon: const Icon(Icons.clear),
+                            icon: const Icon(Icons.clear, color: _textGrey),
                             onPressed: () {
                               _searchController.clear();
                               _onSearchChanged();
@@ -509,6 +540,7 @@ class _PedidoListScreenState extends State<PedidoListScreen> {
                           )
                         : null,
                   ),
+                  style: const TextStyle(color: _darkGrey),
                 ),
               ],
             ),
@@ -518,11 +550,11 @@ class _PedidoListScreenState extends State<PedidoListScreen> {
               future: _pedidosWithClientFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const Center(child: CircularProgressIndicator(color: _primaryRose));
                 } else if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}'));
+                  return Center(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.red)));
                 } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return const Center(child: Text('No hay pedidos disponibles.'));
+                  return const Center(child: Text('No hay pedidos disponibles.', style: TextStyle(color: _textGrey)));
                 } else {
                   final filteredPedidos = snapshot.data!.where((pedidoData) {
                     final Pedido pedido = pedidoData['pedido'];
@@ -547,33 +579,43 @@ class _PedidoListScreenState extends State<PedidoListScreen> {
                   }).toList();
 
                   if (filteredPedidos.isEmpty) {
-                    return const Center(child: Text('No se encontraron pedidos que coincidan con la búsqueda.'));
+                    return const Center(child: Text('No se encontraron pedidos que coincidan con la búsqueda.', style: TextStyle(color: _textGrey)));
                   }
 
                   return ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 15.0),
                     itemCount: filteredPedidos.length,
                     itemBuilder: (context, index) {
                       final pedidoData = filteredPedidos[index];
                       final Pedido pedido = pedidoData['pedido'];
                       final String clientName = pedidoData['clientName'];
                       final bool isExpanded = _expandedPedidoId == pedido.idPedido;
-                      final double opacity = _canceledPedidoIds.contains(pedido.idPedido) ? 0.5 : 1.0;
+                      final double opacity = _canceledPedidoIds.contains(pedido.idPedido) ? 0.6 : 1.0; // Slightly more visible for canceled
 
                       return Opacity(
                         opacity: opacity,
                         child: Card(
-                          margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                          color: Colors.white,
-                          elevation: 1,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(0)),
+                          margin: const EdgeInsets.symmetric(vertical: 8),
+                          color: Colors.white, // White card background
+                          elevation: 3, // Subtle shadow
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                           child: Column(
                             children: [
                               ListTile(
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
                                 title: Text(
-                                  'Pedido Nro: ${pedido.idPedido} - Cliente: $clientName - Entrega: ${DateFormat('dd/MM/yyyy HH:mm').format(pedido.fechaEntrega)}',
-                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                  'Pedido Nro: ${pedido.idPedido}',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: _darkGrey),
                                 ),
-                                trailing: Icon(isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const SizedBox(height: 4),
+                                    Text('Cliente: $clientName', style: const TextStyle(fontSize: 14, color: _textGrey)),
+                                    Text('Entrega: ${DateFormat('dd/MM/yyyy HH:mm').format(pedido.fechaEntrega)}', style: const TextStyle(fontSize: 14, color: _textGrey)),
+                                  ],
+                                ),
+                                trailing: Icon(isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down, color: _primaryRose), // Rose arrow icon
                                 onTap: () {
                                   setState(() {
                                     if (isExpanded) {
