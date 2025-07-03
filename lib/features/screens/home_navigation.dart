@@ -5,6 +5,7 @@ import 'products/home_screen.dart';
 import 'auth/login_screen.dart';
 import 'client/client_dashboard.dart';
 import 'admin/admin_dashboard.dart';
+import 'admin/ventas/pedido_list_screen.dart'; // Add this line
 
 class HomeNavigation extends StatefulWidget {
   const HomeNavigation({super.key});
@@ -29,7 +30,7 @@ class _HomeNavigationState extends State<HomeNavigation> {
       return [
         HomeScreen(), // Categorías (inicio)
         const AdminDashboard(), // Dashboard/Perfil del admin
-        const Center(child: Text('Gestión de Ventas')),
+        const PedidoListScreen(), // This will now be the "Ventas" screen
         const SizedBox(), // Placeholder para logout
       ];
     }
