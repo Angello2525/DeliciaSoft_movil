@@ -6,9 +6,19 @@ import '../models/cliente.dart';
 import '../models/usuario.dart';
 import '../utils/constants.dart';
 import '../models/rol.dart';
+import '../models/venta/abono.dart';
+import '../models/venta/catalogo_adicione.dart';
+import '../models/venta/catalogo_relleno.dart';
+import '../models/venta/catalogo_sabor.dart';
+import '../models/venta/detalle_adicione.dart';
+import '../models/venta/detalle_venta.dart';
+import '../models/venta/pedido.dart';
+import '../models/venta/producto_general.dart';
+import '../models/venta/sede.dart';
+import '../models/venta/venta.dart';
 
 class ApiService {
-  static const String _baseUrl = Constants.baseUrl;
+  static const String __baseUrl = Constants.baseUrl;
 
   static Map<String, String> get _headers => {
         'Content-Type': 'application/json',
@@ -574,7 +584,7 @@ static Future<ApiResponse<Cliente>> registerClient(Cliente cliente) async {
   static Future<ApiResponse<List<Usuario>>> getAllUsers(String token) async {
     try {
       final response = await http.get(
-        Uri.parse('$_baseUrl/admin/users'),
+        Uri.parse('$__baseUrl/admin/users'),
         headers: _headersWithToken(token),
       );
       _handleHttpError(response);
@@ -588,7 +598,7 @@ static Future<ApiResponse<Cliente>> registerClient(Cliente cliente) async {
   static Future<ApiResponse<Cliente>> getClientProfile(String token, int idCliente) async {
   try {
     final response = await http.get(
-      Uri.parse('$_baseUrl/Clientes/$idCliente'),
+      Uri.parse('$__baseUrl/Clientes/$idCliente'),
       headers: _headersWithToken(token),
     );
     _handleHttpError(response);
@@ -605,7 +615,7 @@ static Future<ApiResponse<Cliente>> registerClient(Cliente cliente) async {
 static Future<ApiResponse<Usuario>> getUserProfile(String token, int idUsuario) async {
   try {
     final response = await http.get(
-      Uri.parse('$_baseUrl/Usuarios/$idUsuario'),
+      Uri.parse('$__baseUrl/Usuarios/$idUsuario'),
       headers: _headersWithToken(token),
     );
     _handleHttpError(response);
@@ -649,7 +659,7 @@ static Future<ApiResponse<Usuario>> getUserProfile(String token, int idUsuario) 
   static Future<ApiResponse<List<Rol>>> getAllRoles(String token) async {
     try {
       final response = await http.get(
-        Uri.parse('$_baseUrl/admin/roles'),
+        Uri.parse('$__baseUrl/admin/roles'),
         headers: _headersWithToken(token),
       );
       _handleHttpError(response);
@@ -663,7 +673,7 @@ static Future<ApiResponse<Usuario>> getUserProfile(String token, int idUsuario) 
   static Future<ApiResponse<Usuario>> updateUserProfile(String token, Usuario usuario) async {
     try {
       final response = await http.put(
-        Uri.parse('$_baseUrl/admin/users/${usuario.idUsuario}'),
+        Uri.parse('$__baseUrl/admin/users/${usuario.idUsuario}'),
         headers: _headersWithToken(token),
         body: jsonEncode(usuario.toJson()),
       );
@@ -706,7 +716,7 @@ static Future<ApiResponse<Usuario>> getUserProfile(String token, int idUsuario) 
   static Future<ApiResponse<Usuario>> updateUsuarioStatus(String token, int idUsuario, bool newStatus) async {
     try {
       final response = await http.put(
-        Uri.parse('$_baseUrl/admin/users/$idUsuario/status'),
+        Uri.parse('$__baseUrl/admin/users/$idUsuario/status'),
         headers: _headersWithToken(token),
         body: jsonEncode({'estado': newStatus}), // Mantener camelCase si es lo que funciona
       );
@@ -721,7 +731,7 @@ static Future<ApiResponse<Usuario>> getUserProfile(String token, int idUsuario) 
   static Future<ApiResponse<Cliente>> updateClientStatus(String token, int idCliente, bool newStatus) async {
     try {
       final response = await http.put(
-        Uri.parse('$_baseUrl/admin/clients/$idCliente/status'),
+        Uri.parse('$__baseUrl/admin/clients/$idCliente/status'),
         headers: _headersWithToken(token),
       );
       _handleHttpError(response);
@@ -735,7 +745,7 @@ static Future<ApiResponse<Usuario>> getUserProfile(String token, int idUsuario) 
   static Future<ApiResponse<Cliente>> getClientById(String token, int idCliente) async {
   try {
     final response = await http.get(
-      Uri.parse('${Constants.baseUrl}/Clientes/$idCliente'), 
+      Uri.parse('$__baseUrl/Clientes/$idCliente'), 
       headers: _headersWithToken(token),
     );
     
@@ -772,5 +782,220 @@ static Future<ApiResponse<Cliente>> getCurrentClientProfile(String token, String
     throw Exception('Error al obtener cliente por email: $e');
   }
 }
+
+
+  static Future<List<Pedido>> getPedidos() async {
+    final response = await http.get(Uri.parse('$__baseUrl/Pedidoes'));
+
+    if (response.statusCode == 200) {
+      List jsonResponse = json.decode(response.body);
+      return jsonResponse.map((pedido) => Pedido.fromJson(pedido)).toList();
+    } else {
+      throw Exception('Failed to load pedidos: ${response.statusCode}');
+    }
+  }
+
+  static Future<Pedido> getPedidoById(int id) async {
+    final response = await http.get(Uri.parse('$__baseUrl/Pedidoes/$id'));
+
+    if (response.statusCode == 200) {
+      return Pedido.fromJson(json.decode(response.body));
+    } else {
+      throw Exception('Failed to load pedido with ID $id: ${response.statusCode}');
+    }
+  }
+
+  static Future<ProductoGeneral> getProductoGeneralById(int id) async {
+    final response = await http.get(Uri.parse('$__baseUrl/ProductoGenerals/$id'));
+
+    if (response.statusCode == 200) {
+      return ProductoGeneral.fromJson(json.decode(response.body));
+    } else {
+      throw Exception('Failed to load ProductoGeneral with ID $id: ${response.statusCode}');
+    }
+  }
+
+  static Future<Venta> getVentaById(int id) async {
+    final response = await http.get(Uri.parse('$__baseUrl/Ventums/$id'));
+
+    if (response.statusCode == 200) {
+      return Venta.fromJson(json.decode(response.body));
+    } else {
+      throw Exception('Failed to load Venta with ID $id: ${response.statusCode}');
+    }
+  }
+  
+
+  // Nuevo método para obtener DetalleVenta por IdVenta
+  static Future<List<DetalleVenta>> getDetalleVentaByVentaId(int idVenta) async {
+    final response = await http.get(Uri.parse('$__baseUrl/DetalleVentums/ByVenta/$idVenta'));
+
+    if (response.statusCode == 200) {
+      List jsonResponse = json.decode(response.body);
+      return jsonResponse.map((detalle) => DetalleVenta.fromJson(detalle)).toList();
+    } else {
+      throw Exception('Failed to load DetalleVenta for Venta ID $idVenta: ${response.statusCode} - ${response.body}');
+    }
+  }
+
+  // Nuevo método para obtener DetalleAdiciones por IdDetalleVenta
+  static Future<List<DetalleAdicione>> getDetalleAdicionesByDetalleVentaId(int idDetalleVenta) async {
+    final response = await http.get(Uri.parse('$__baseUrl/DetalleAdiciones'));
+
+    if (response.statusCode == 200) {
+      List jsonResponse = json.decode(response.body);
+      return jsonResponse
+          .map((adicione) => DetalleAdicione.fromJson(adicione))
+          .where((adicione) => adicione.idDetalleVenta == idDetalleVenta)
+          .toList();
+    } else {
+      throw Exception('Failed to load DetalleAdiciones for DetalleVenta ID $idDetalleVenta: ${response.statusCode} - ${response.body}');
+    }
+  }
+
+  // NEW: Method to get CatalogoAdicione by ID
+  static Future<CatalogoAdicione> getCatalogoAdicionesById(int id) async {
+    final response = await http.get(Uri.parse('$__baseUrl/CatalogoAdiciones/$id'));
+    if (response.statusCode == 200) {
+      return CatalogoAdicione.fromJson(json.decode(response.body));
+    } else {
+      throw Exception('Failed to load CatalogoAdicione with ID $id: ${response.statusCode}');
+    }
+  }
+
+  // NEW: Method to get CatalogoSabor by ID
+  static Future<CatalogoSabor> getCatalogoSaborById(int id) async {
+    final response = await http.get(Uri.parse('$__baseUrl/CatalogoSabors/$id'));
+    if (response.statusCode == 200) {
+      return CatalogoSabor.fromJson(json.decode(response.body));
+    } else {
+      throw Exception('Failed to load CatalogoSabor with ID $id: ${response.statusCode}');
+    }
+  }
+
+  // NEW: Method to get CatalogoRelleno by ID
+  static Future<CatalogoRelleno> getCatalogoRellenoById(int id) async {
+    final response = await http.get(Uri.parse('$__baseUrl/CatalogoRellenoes/$id'));
+    if (response.statusCode == 200) {
+      return CatalogoRelleno.fromJson(json.decode(response.body));
+    } else {
+      throw Exception('Failed to load CatalogoRelleno with ID $id: ${response.statusCode}');
+    }
+  }
+
+  static Future<Cliente> getClienteById(int id) async {
+    final response = await http.get(Uri.parse('$__baseUrl/Clientes/$id'));
+
+    if (response.statusCode == 200) {
+      return Cliente.fromJson(json.decode(response.body));
+    } else {
+      throw Exception('Failed to load Cliente with ID $id: ${response.statusCode}');
+    }
+  }
+  
+
+  static Future<Sede> getSedeById(int id) async {
+    final response = await http.get(Uri.parse('$__baseUrl/Sedes/$id'));
+
+    if (response.statusCode == 200) {
+      return Sede.fromJson(json.decode(response.body));
+    } else {
+      throw Exception('Failed to load Sede with ID $id: ${response.statusCode}');
+    }
+  }
+
+  static Future<Pedido> createPedido(Pedido pedido) async {
+    final response = await http.post(
+      Uri.parse('$__baseUrl/Pedidoes'),
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+      },
+      body: jsonEncode(pedido.toCreateJson()),
+    );
+
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      return Pedido.fromJson(json.decode(response.body));
+    } else {
+      throw Exception('Failed to create pedido: ${response.statusCode} - ${response.body}');
+    }
+  }
+
+  static Future<Pedido> updatePedido(int id, Pedido pedido) async {
+    final response = await http.put(
+      Uri.parse('$__baseUrl/Pedidoes/$id'),
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+      },
+      body: jsonEncode(pedido.toJson()),
+    );
+
+    if (response.statusCode == 204 || response.statusCode == 200) {
+      return pedido;
+    } else {
+      throw Exception('Failed to update pedido: ${response.statusCode} - ${response.body}');
+    }
+  }
+
+  static Future<void> deletePedido(int id) async {
+    final response = await http.delete(Uri.parse('$__baseUrl/Pedidoes/$id'));
+
+    if (response.statusCode != 204) {
+      throw Exception('Failed to delete pedido: ${response.statusCode} - ${response.body}');
+    }
+  }
+
+  // Abono API Calls
+  static Future<List<Abono>> getAbonosByPedidoId(int idPedido) async {
+    final response = await http.get(Uri.parse('$__baseUrl/Abonos/ByPedido/$idPedido')); // Uses the specific endpoint
+
+    if (response.statusCode == 200) {
+      List jsonResponse = json.decode(response.body);
+      return jsonResponse.map((abono) => Abono.fromJson(abono)).toList();
+    } else {
+      throw Exception('Failed to load abonos for Pedido ID $idPedido: ${response.statusCode} - ${response.body}');
+    }
+  }
+
+  static Future<Abono> createAbono(Abono abono) async {
+    final response = await http.post(
+      Uri.parse('$__baseUrl/Abonos'),
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+      },
+      // IMPORTANT: Use toCreateJson() for new abonos so idAbono is not sent
+      body: jsonEncode(abono.toCreateJson()), // <<<--- THIS LINE IS UPDATED
+    );
+
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      return Abono.fromJson(json.decode(response.body));
+    } else {
+      throw Exception('Failed to create abono: ${response.statusCode} - ${response.body}');
+    }
+  }
+
+  static Future<Abono> updateAbono(int id, Abono abono) async {
+    final response = await http.put(
+      Uri.parse('$__baseUrl/Abonos/$id'),
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+      },
+      body: jsonEncode(abono.toJson()),
+    );
+
+    if (response.statusCode == 204 || response.statusCode == 200) {
+      return abono;
+    } else {
+      throw Exception('Failed to update abono: ${response.statusCode} - ${response.body}');
+    }
+  }
+
+
+  static Future<void> deleteAbono(int id) async {
+    final response = await http.delete(Uri.parse('$__baseUrl/Abonos/$id'));
+
+    if (response.statusCode != 204) {
+      throw Exception('Failed to delete abono: ${response.statusCode} - ${response.body}');
+    }
+  }
   
 }

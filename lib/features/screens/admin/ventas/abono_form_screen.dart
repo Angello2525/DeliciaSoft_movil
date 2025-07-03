@@ -1,0 +1,209 @@
+// lib/screens/abono_form_screen.dart
+import 'package:flutter/material.dart';
+import '../../../models/venta/abono.dart';
+import '../../../services/api_service.dart';
+
+class AbonoFormScreen extends StatefulWidget {
+  final int idPedido;
+  final Abono? abono; // Null for new abono, provided for editing
+
+  const AbonoFormScreen({
+    super.key,
+    required this.idPedido,
+    this.abono,
+  });
+
+  @override
+  State<AbonoFormScreen> createState() => _AbonoFormScreenState();
+}
+
+class _AbonoFormScreenState extends State<AbonoFormScreen> {
+  final _formKey = GlobalKey<FormState>();
+  late TextEditingController _cantidadPagarController;
+  late TextEditingController _idImagenController; // For demonstration, later can be image picker
+  String? _selectedMetodoPago; // To hold the selected payment method
+
+  @override
+  void initState() {
+    super.initState();
+    _cantidadPagarController = TextEditingController(text: widget.abono?.cantidadPagar?.toString() ?? '');
+    _idImagenController = TextEditingController(text: widget.abono?.idImagen?.toString() ?? '');
+    _selectedMetodoPago = widget.abono?.metodoPago; // Initialize with existing method or null
+  }
+
+  @override
+  void dispose() {
+    _cantidadPagarController.dispose();
+    _idImagenController.dispose();
+    super.dispose();
+  }
+
+  void _saveAbono() async {
+    if (_formKey.currentState!.validate()) {
+      _formKey.currentState!.save();
+
+      final newAbono = Abono(
+        idAbono: widget.abono?.idAbono, // Keep existing ID for update
+        idPedido: widget.idPedido,
+        metodoPago: _selectedMetodoPago, // Use the selected value
+        cantidadPagar: double.tryParse(_cantidadPagarController.text),
+        idImagen: _selectedMetodoPago == 'Transferencia'
+            ? int.tryParse(_idImagenController.text)
+            : null, // Only save idImagen if Transferencia
+      );
+
+      try {
+        if (widget.abono == null) {
+          // Creating a new abono
+          await ApiService.createAbono(newAbono);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Abono creado exitosamente!')),
+          );
+        } else {
+          // Updating an existing abono
+          await ApiService.updateAbono(newAbono.idAbono!, newAbono);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Abono actualizado exitosamente!')),
+          );
+        }
+        Navigator.of(context).pop(true); // Indicate success and close
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al guardar abono: $e')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Theme(
+      data: ThemeData(
+        colorScheme: ColorScheme.fromSwatch(
+          primarySwatch: Colors.pink, // Primary color for the app bar, etc.
+        ).copyWith(
+          secondary: Colors.pinkAccent, // Accent color for buttons, etc.
+          onSurface: Colors.black87, // Default text color
+          error: Colors.red.shade700, // Error text color
+        ),
+        textSelectionTheme: TextSelectionThemeData(
+          cursorColor: Colors.pink.shade700, // Cursor color for text fields
+          selectionHandleColor: Colors.pink.shade700,
+          selectionColor: Colors.pink.shade100,
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          labelStyle: TextStyle(color: Colors.black.withOpacity(0.7)),
+          focusedBorder: UnderlineInputBorder(
+            borderSide: BorderSide(color: Colors.pink.shade700, width: 2.0),
+          ),
+          enabledBorder: UnderlineInputBorder(
+            borderSide: BorderSide(color: Colors.black.withOpacity(0.3)),
+          ),
+          errorBorder: UnderlineInputBorder(
+            borderSide: BorderSide(color: Colors.red.shade700, width: 2.0),
+          ),
+          focusedErrorBorder: UnderlineInputBorder(
+            borderSide: BorderSide(color: Colors.red.shade700, width: 2.0),
+          ),
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.pink, // Button background color
+            foregroundColor: Colors.white, // Button text color
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8.0),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          ),
+        ),
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(
+            foregroundColor: Colors.pink.shade700, // Text button color
+          ),
+        ),
+        dropdownMenuTheme: DropdownMenuThemeData(
+          textStyle: TextStyle(color: Colors.black87),
+          // You can customize other properties like menuStyle, etc.
+        ),
+      ),
+      child: AlertDialog(
+        title: Text(
+          widget.abono == null ? 'Crear Abono' : 'Editar Abono',
+          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
+        ),
+        content: Form(
+          key: _formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<String>(
+                  value: _selectedMetodoPago,
+                  decoration: const InputDecoration(
+                    labelText: 'Método de Pago',
+                  ),
+                  items: <String>['Efectivo', 'Transferencia']
+                      .map<DropdownMenuItem<String>>((String value) {
+                    return DropdownMenuItem<String>(
+                      value: value,
+                      child: Text(value),
+                    );
+                  }).toList(),
+                  onChanged: (String? newValue) {
+                    setState(() {
+                      _selectedMetodoPago = newValue;
+                    });
+                  },
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Por favor seleccione el método de pago';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16.0), // Spacing
+                TextFormField(
+                  controller: _cantidadPagarController,
+                  decoration: const InputDecoration(labelText: 'Cantidad a Pagar'),
+                  keyboardType: TextInputType.number,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Por favor ingrese la cantidad a pagar';
+                    }
+                    if (double.tryParse(value) == null) {
+                      return 'Por favor ingrese un número válido';
+                    }
+                    return null;
+                  },
+                ),
+                if (_selectedMetodoPago == 'Transferencia')
+                  Column(
+                    children: [
+                      const SizedBox(height: 16.0), // Spacing
+                      TextFormField(
+                        controller: _idImagenController,
+                        decoration: const InputDecoration(labelText: 'ID de Imagen (Cargar Comprobante)'),
+                        keyboardType: TextInputType.number,
+                      ),
+                    ],
+                  ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop(false); // Indicate cancel and close
+            },
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: _saveAbono,
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+  }
+}
