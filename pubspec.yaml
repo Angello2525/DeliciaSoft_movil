@@ -18,7 +18,7 @@ dependencies:
   fluttertoast: ^8.2.4
 
   # Red e Internet
-  http: ^1.1.0
+  http: ^1.2.1 # Keeping the higher version
   connectivity_plus: ^5.0.2
 
   # Formularios y Validación
@@ -30,7 +30,7 @@ dependencies:
   provider: ^6.0.5
 
   # Manejo de imágenes
-  image_picker: ^1.1.1
+  image_picker: ^1.1.2 # Keeping the higher version
 
   # Fechas
   intl: ^0.18.1

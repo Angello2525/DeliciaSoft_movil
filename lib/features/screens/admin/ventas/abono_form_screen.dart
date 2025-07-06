@@ -1,12 +1,12 @@
-// lib/screens/abono_form_screen.dart
 import 'package:flutter/material.dart';
 import '../../../models/venta/abono.dart';
 import '../../../services/api_service.dart';
-
+import 'package:image_picker/image_picker.dart';
+import '../../../models/Venta/imagene.dart'; 
+import 'dart:io';
 class AbonoFormScreen extends StatefulWidget {
   final int idPedido;
-  final Abono? abono; // Null for new abono, provided for editing
-
+  final Abono? abono;  
   const AbonoFormScreen({
     super.key,
     required this.idPedido,
@@ -20,37 +20,91 @@ class AbonoFormScreen extends StatefulWidget {
 class _AbonoFormScreenState extends State<AbonoFormScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _cantidadPagarController;
-  late TextEditingController _idImagenController; // For demonstration, later can be image picker
-  String? _selectedMetodoPago; // To hold the selected payment method
+  String? _selectedMetodoPago; 
+
+  XFile? _selectedImage; 
+  Imagene? _uploadedImage; 
 
   @override
   void initState() {
     super.initState();
     _cantidadPagarController = TextEditingController(text: widget.abono?.cantidadPagar?.toString() ?? '');
-    _idImagenController = TextEditingController(text: widget.abono?.idImagen?.toString() ?? '');
-    _selectedMetodoPago = widget.abono?.metodoPago; // Initialize with existing method or null
+    _selectedMetodoPago = widget.abono?.metodoPago;  
+
+    if (widget.abono?.idImagen != null && widget.abono?.urlImagen != null && _selectedMetodoPago == 'Transferencia') {
+      _uploadedImage = Imagene(idImagen: widget.abono!.idImagen, urlImg: widget.abono!.urlImagen);
+    }
   }
 
   @override
   void dispose() {
     _cantidadPagarController.dispose();
-    _idImagenController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickImage() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery);  
+    setState(() {
+      _selectedImage = image;
+      _uploadedImage = null;  
+    });
   }
 
   void _saveAbono() async {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
 
+      int? finalIdImagen;
+      String? finalImageUrl;  
+
+      if (_selectedMetodoPago == 'Transferencia') {
+        if (_selectedImage != null) {
+          try {
+            final uploadedImg = await ApiService.uploadImage(_selectedImage!);
+            finalIdImagen = uploadedImg.idImagen;
+            finalImageUrl = uploadedImg.urlImg; 
+            Imagene? _uploadedImage;   
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Imagen cargada exitosamente!')),
+            );
+          } catch (e) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Error al subir imagen: $e')),
+            );
+            return; // Stop the process if image upload fails
+          }
+        } else if (widget.abono?.idImagen != null) {
+          finalIdImagen = widget.abono!.idImagen;
+          finalImageUrl = widget.abono!.urlImagen;
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Por favor, seleccione un comprobante para Transferencia.')),
+          );
+          return;
+        }
+      } else {
+        finalIdImagen = null;
+        finalImageUrl = null;
+      }
+
       final newAbono = Abono(
         idAbono: widget.abono?.idAbono, // Keep existing ID for update
         idPedido: widget.idPedido,
         metodoPago: _selectedMetodoPago, // Use the selected value
         cantidadPagar: double.tryParse(_cantidadPagarController.text),
-        idImagen: _selectedMetodoPago == 'Transferencia'
-            ? int.tryParse(_idImagenController.text)
-            : null, // Only save idImagen if Transferencia
+        idImagen: finalIdImagen, // Use the ID from the uploaded image or existing
+        urlImagen: finalImageUrl, // Assign the URL here
       );
+
+      // Add print statements for debugging the Abono object before sending
+      print('Abono being sent:'); //
+      print('  idPedido: ${newAbono.idPedido}'); //
+      print('  metodoPago: ${newAbono.metodoPago}'); //
+      print('  cantidadPagar: ${newAbono.cantidadPagar}'); //
+      print('  idImagen: ${newAbono.idImagen}'); //
+      print('  urlImagen: ${newAbono.urlImagen}'); //
+
 
       try {
         if (widget.abono == null) {
@@ -121,15 +175,14 @@ class _AbonoFormScreenState extends State<AbonoFormScreen> {
             foregroundColor: Colors.pink.shade700, // Text button color
           ),
         ),
-        dropdownMenuTheme: DropdownMenuThemeData(
+        dropdownMenuTheme: const DropdownMenuThemeData(
           textStyle: TextStyle(color: Colors.black87),
-          // You can customize other properties like menuStyle, etc.
         ),
       ),
       child: AlertDialog(
         title: Text(
           widget.abono == null ? 'Crear Abono' : 'Editar Abono',
-          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
+          style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
         ),
         content: Form(
           key: _formKey,
@@ -152,6 +205,11 @@ class _AbonoFormScreenState extends State<AbonoFormScreen> {
                   onChanged: (String? newValue) {
                     setState(() {
                       _selectedMetodoPago = newValue;
+                      // Clear selected image and uploaded image data if method changes from Transferencia
+                      if (newValue != 'Transferencia') {
+                        _selectedImage = null;
+                        _uploadedImage = null;
+                      }
                     });
                   },
                   validator: (value) {
@@ -161,7 +219,7 @@ class _AbonoFormScreenState extends State<AbonoFormScreen> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 16.0), // Spacing
+                const SizedBox(height: 16.0),
                 TextFormField(
                   controller: _cantidadPagarController,
                   decoration: const InputDecoration(labelText: 'Cantidad a Pagar'),
@@ -179,17 +237,55 @@ class _AbonoFormScreenState extends State<AbonoFormScreen> {
                 if (_selectedMetodoPago == 'Transferencia')
                   Column(
                     children: [
-                      const SizedBox(height: 16.0), // Spacing
-                      TextFormField(
-                        controller: _idImagenController,
-                        decoration: const InputDecoration(labelText: 'ID de Imagen (Cargar Comprobante)'),
-                        keyboardType: TextInputType.number,
+                      const SizedBox(height: 16.0),
+                      ElevatedButton.icon(
+                        onPressed: _pickImage,
+                        icon: const Icon(Icons.upload_file),
+                        label: const Text('Seleccionar Comprobante'),
                       ),
+                      if (_selectedImage != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8.0),
+                          child: Text(
+                            'Archivo seleccionado: ${_selectedImage!.name}',
+                            style: const TextStyle(color: Colors.black54),
+                          ),
+                        )
+                      else if (_uploadedImage?.urlImg != null && _uploadedImage!.urlImg!.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8.0),
+                          child: Text(
+                            'Comprobante actual: ${_uploadedImage!.urlImg!.split('/').last}', // Show file name from uploaded URL
+                            style: const TextStyle(color: Colors.black54),
+                          ),
+                        ),
+                      if (_selectedImage != null)
+                        Container(
+                          margin: const EdgeInsets.only(top: 10),
+                          height: 100,
+                          child: Image.file(
+                            File(_selectedImage!.path), // Display local file
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image),
+                          ),
+                        )
+                      else if (_uploadedImage?.urlImg != null && _uploadedImage!.urlImg!.isNotEmpty)
+                        Container(
+                          margin: const EdgeInsets.only(top: 10),
+                          height: 100,
+                          child: Image.network(
+                            _uploadedImage!.urlImg!, // Display uploaded image from URL
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image),
+                          ),
+                        ),
                     ],
                   ),
               ],
             ),
+            
           ),
+          
         ),
         actions: [
           TextButton(
@@ -206,4 +302,5 @@ class _AbonoFormScreenState extends State<AbonoFormScreen> {
       ),
     );
   }
+  
 }
