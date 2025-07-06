@@ -16,6 +16,9 @@ import '../models/venta/pedido.dart';
 import '../models/venta/producto_general.dart';
 import '../models/venta/sede.dart';
 import '../models/venta/venta.dart';
+import '../models/venta/imagene.dart';
+import 'package:image_picker/image_picker.dart'; 
+
 
 class ApiService {
   static const String __baseUrl = Constants.baseUrl;
@@ -1242,13 +1245,33 @@ static Future<ApiResponse<Usuario>> getCurrentAdminProfile(String token, String 
     }
   }
 
-  // Abono API Calls
-  static Future<List<Abono>> getAbonosByPedidoId(int idPedido) async {
-    final response = await http.get(Uri.parse('$__baseUrl/Abonos/ByPedido/$idPedido')); // Uses the specific endpoint
+  static Future<Imagene> uploadImage(XFile imageFile) async {
+    final uri = Uri.parse('$__baseUrl/Imagenes/subir');
+    var request = http.MultipartRequest('POST', uri);
+    request.files.add(await http.MultipartFile.fromPath(
+      'archivo', // Este debe coincidir con el nombre del parámetro en tu API C# ([FromForm] IFormFile archivo)
+      imageFile.path,
+      filename: imageFile.name,
+    ));
 
+    var response = await request.send();
+
+    if (response.statusCode == 201) { // 201 Created es el código que devuelve tu API
+      final responseBody = await response.stream.bytesToString();
+      final Map<String, dynamic> jsonResponse = json.decode(responseBody);
+      return Imagene.fromJson(jsonResponse); // Deserializa el objeto Imagene completo
+    } else {
+      final errorBody = await response.stream.bytesToString();
+      throw Exception('Failed to upload image: ${response.statusCode} - $errorBody');
+    }
+  }
+
+  static Future<List<Abono>> getAbonosByPedidoId(int idPedido) async {
+    final response = await http.get(Uri.parse('$__baseUrl/Abonos/ByPedido/$idPedido'));
+    _handleHttpError(response);
     if (response.statusCode == 200) {
-      List jsonResponse = json.decode(response.body);
-      return jsonResponse.map((abono) => Abono.fromJson(abono)).toList();
+      final List<dynamic> abonosJson = jsonDecode(response.body);
+      return abonosJson.map((abono) => Abono.fromJson(abono)).toList();
     } else {
       throw Exception('Failed to load abonos for Pedido ID $idPedido: ${response.statusCode} - ${response.body}');
     }
@@ -1260,18 +1283,17 @@ static Future<ApiResponse<Usuario>> getCurrentAdminProfile(String token, String 
       headers: <String, String>{
         'Content-Type': 'application/json; charset=UTF-8',
       },
-      // IMPORTANT: Use toCreateJson() for new abonos so idAbono is not sent
-      body: jsonEncode(abono.toCreateJson()), // <<<--- THIS LINE IS UPDATED
+      body: jsonEncode(abono.toCreateJson()), // <--- CAMBIO AQUÍ: Usar toCreateJson()
     );
 
-    if (response.statusCode == 201 || response.statusCode == 200) {
-      return Abono.fromJson(json.decode(response.body));
+    if (response.statusCode == 201) {
+      return Abono.fromJson(jsonDecode(response.body));
     } else {
       throw Exception('Failed to create abono: ${response.statusCode} - ${response.body}');
     }
   }
 
-  static Future<Abono> updateAbono(int id, Abono abono) async {
+   static Future<void> updateAbono(int id, Abono abono) async {
     final response = await http.put(
       Uri.parse('$__baseUrl/Abonos/$id'),
       headers: <String, String>{
@@ -1280,13 +1302,10 @@ static Future<ApiResponse<Usuario>> getCurrentAdminProfile(String token, String 
       body: jsonEncode(abono.toJson()),
     );
 
-    if (response.statusCode == 204 || response.statusCode == 200) {
-      return abono;
-    } else {
+    if (response.statusCode != 204) { // 204 No Content es el código que devuelve tu API para PUT exitoso
       throw Exception('Failed to update abono: ${response.statusCode} - ${response.body}');
     }
   }
-
 
   static Future<void> deleteAbono(int id) async {
     final response = await http.delete(Uri.parse('$__baseUrl/Abonos/$id'));

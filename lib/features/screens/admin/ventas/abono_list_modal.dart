@@ -1,9 +1,7 @@
-// lib/screens/abono_list_modal.dart
 import 'package:flutter/material.dart';
 import '../../../models/venta/abono.dart';
 import '../../../services/api_service.dart';
-import 'abono_form_screen.dart'; // Import the new form screen
-
+import 'abono_form_screen.dart';  
 class AbonoListModal extends StatefulWidget {
   final int idPedido;
 
