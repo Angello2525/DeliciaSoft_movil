@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../utils/constants.dart';
 import '../../utils/routes.dart';
 import '../../widgets/custom_button.dart';
-import '../../widgets/custom_text_field.dart';
 import '../../widgets/loading_widget.dart';
 
 class VerificationScreen extends StatefulWidget {
@@ -29,59 +29,119 @@ class VerificationScreen extends StatefulWidget {
 
 class _VerificationScreenState extends State<VerificationScreen> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _codeController = TextEditingController();
+  final List<TextEditingController> _controllers = List.generate(6, (index) => TextEditingController());
+  final List<FocusNode> _focusNodes = List.generate(6, (index) => FocusNode());
 
   @override
   void dispose() {
-    _codeController.dispose();
+    for (var controller in _controllers) {
+      controller.dispose();
+    }
+    for (var focusNode in _focusNodes) {
+      focusNode.dispose();
+    }
     super.dispose();
   }
 
   @override
-void initState() {
-  super.initState();
-  // Enviar código automáticamente al inicializar la pantalla
-  WidgetsBinding.instance.addPostFrameCallback((_) {
-    _sendInitialCode();
-  });
-}
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _sendInitialCode();
+    });
+  }
 
-Future<void> _sendInitialCode() async {
-  if (widget.userType != null && !widget.isPasswordReset) {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    
-    final response = await authProvider.sendVerificationCode(
-      widget.email,
-      widget.userType!,
-    );
-
-    if (mounted && response != null && response['error'] != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error enviando código inicial: ${response['error']}'),
-          backgroundColor: Colors.red,
-        ),
+  Future<void> _sendInitialCode() async {
+    if (widget.userType != null && !widget.isPasswordReset) {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      
+      final response = await authProvider.sendVerificationCode(
+        widget.email,
+        widget.userType!,
       );
+
+      if (mounted && response != null && response['error'] != null) {
+        _showErrorAlert('Error enviando código inicial: ${response['error']}');
+      }
     }
   }
-}
 
-  void _showDebugInfo() {
-  print('=== DEBUG VERIFICATION SCREEN ===');
-  print('Email: ${widget.email}');
-  print('UserType: ${widget.userType}');
-  print('IsLogin: ${widget.isLogin}');
-  print('IsPasswordReset: ${widget.isPasswordReset}');
-  print('Password existe: ${widget.password != null}');
-  print('Código ingresado: ${_codeController.text}');
-  print('================================');
-}
+  String get _verificationCode {
+    return _controllers.map((controller) => controller.text).join();
+  }
 
-Future<void> _verifyCode() async {
-  if (_formKey.currentState!.validate()) {
-    _showDebugInfo();
+  void _showErrorAlert(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.error_outline, color: Colors.red[400], size: 24),
+            const SizedBox(width: 8),
+            const Text('Error', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+          ],
+        ),
+        content: Text(
+          message,
+          style: TextStyle(fontSize: 16, color: Colors.grey[700]),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text(
+              'Entendido',
+              style: TextStyle(
+                color: Color(0xFFE91E63),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSuccessAlert(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.check_circle_outline, color: Colors.green[400], size: 24),
+            const SizedBox(width: 8),
+            const Text('Éxito', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+          ],
+        ),
+        content: Text(
+          message,
+          style: TextStyle(fontSize: 16, color: Colors.grey[700]),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text(
+              'Continuar',
+              style: TextStyle(
+                color: Color(0xFFE91E63),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _verifyCode() async {
+    if (_verificationCode.length != 6) {
+      _showErrorAlert('Por favor ingresa el código completo de 6 dígitos');
+      return;
+    }
+
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final verificationCode = _codeController.text.trim();
+    final verificationCode = _verificationCode.trim();
 
     if (!mounted) return;
 
@@ -89,8 +149,6 @@ Future<void> _verifyCode() async {
 
     if (widget.isLogin) {
       if (widget.password != null && widget.userType != null) {
-        print('=== INICIANDO VERIFICACIÓN Y LOGIN ===');
-
         errorMessage = await authProvider.verifyCodeAndLogin(
           widget.email,
           widget.password!,
@@ -101,152 +159,287 @@ Future<void> _verifyCode() async {
         if (!mounted) return;
 
         if (errorMessage == null && authProvider.isAuthenticated) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(Constants.loginSuccess),
-              backgroundColor: Colors.green,
-            ),
-          );
-
-          await Future.delayed(const Duration(milliseconds: 100));
-
+          _showSuccessAlert(Constants.loginSuccess);
+          await Future.delayed(const Duration(milliseconds: 1500));
           if (!mounted) return;
           Navigator.of(context).pushReplacementNamed(AppRoutes.homeNavigation);
         } else {
           final displayMessage = errorMessage ?? 'Error desconocido en la verificación';
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(displayMessage), backgroundColor: Colors.red),
-          );
-
+          _showErrorAlert(displayMessage);
           if (displayMessage.toLowerCase().contains('código') &&
               (displayMessage.toLowerCase().contains('inválido') ||
                displayMessage.toLowerCase().contains('expirado'))) {
-            _codeController.clear();
+            _clearCodeFields();
           }
         }
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Error interno: faltan datos para el inicio de sesión.'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        _showErrorAlert('Error interno: faltan datos para el inicio de sesión.');
       }
     } else if (widget.isPasswordReset) {
-      // Nuevo: revisamos si venimos desde cambio de contraseña
       final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
       final isChangePassword = args?['isChangePassword'] ?? false;
 
       if (isChangePassword) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Código validado. Ingresa tu nueva contraseña...')),
+        // 🔧 Para cambio de contraseña (usuario logueado)
+        _showSuccessAlert('Código validado. Ingresa tu nueva contraseña...');
+        await Future.delayed(const Duration(milliseconds: 1500));
+        if (!mounted) return;
+        
+        // Navegar al reset password pero indicando que es cambio de contraseña
+        Navigator.of(context).pushNamed(
+          AppRoutes.resetPassword,
+          arguments: {
+            'email': widget.email,
+            'verificationCode': verificationCode,
+            'isChangePassword': true, // 🔧 Importante: indica que es cambio, no reset
+            'userType': widget.userType,
+          },
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Código validado. Redirigiendo para restablecer contraseña...')),
+        // 🔧 Para reset de contraseña (usuario no logueado)
+        _showSuccessAlert('Código validado. Redirigiendo para restablecer contraseña...');
+        await Future.delayed(const Duration(milliseconds: 1500));
+        if (!mounted) return;
+        
+        Navigator.of(context).pushNamed(
+          AppRoutes.resetPassword,
+          arguments: {
+            'email': widget.email,
+            'verificationCode': verificationCode,
+            'isChangePassword': false, // 🔧 Es un reset completo
+            'userType': widget.userType,
+          },
         );
       }
-
-      if (!mounted) return;
-     Navigator.of(context).pushNamed(
-      AppRoutes.resetPassword,
-      arguments: {
-        'email': widget.email,
-        'verificationCode': verificationCode,
-        'isChangePassword': isChangePassword,
-        'userType': widget.userType, // pasa el tipo de usuario!
-      },
-    );
-
-
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Flujo de verificación no manejado para registro u otros casos.')),
-      );
+      _showErrorAlert('Flujo de verificación no manejado para registro u otros casos.');
     }
   }
-}
 
+  void _clearCodeFields() {
+    for (var controller in _controllers) {
+      controller.clear();
+    }
+    _focusNodes[0].requestFocus();
+  }
 
- Future<void> _resendCode() async {
-  final authProvider = Provider.of<AuthProvider>(context, listen: false);
-  
-  if (!mounted) return;
-
-  if (widget.userType != null) {
-    final response = await authProvider.sendVerificationCode(
-      widget.email,
-      widget.userType!,
-    );
-
+  Future<void> _resendCode() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    
     if (!mounted) return;
 
-    if (response != null && response['error'] != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(response['error'])),
+    if (widget.userType != null) {
+      final response = await authProvider.sendVerificationCode(
+        widget.email,
+        widget.userType!,
       );
+
+      if (!mounted) return;
+
+      if (response != null && response['error'] != null) {
+        _showErrorAlert(response['error']);
+      } else {
+        _showSuccessAlert('Código reenviado exitosamente');
+        _clearCodeFields();
+      }
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Código reenviado exitosamente')),
-      );
+      _showErrorAlert('No se puede reenviar el código: tipo de usuario no definido.');
     }
-  } else {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('No se puede reenviar el código: tipo de usuario no definido.')),
-    );
   }
-}
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
+
+  Future<bool> _onWillPop() async {
+    // 🔧 Si es cambio de contraseña, permitir regresar al perfil
+    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    final isChangePassword = args?['isChangePassword'] ?? false;
+    
+    if (isChangePassword) {
+      // Si es cambio de contraseña, regresar directamente al perfil
+      return true;
+    }
+    
+    // Para otros casos, mostrar confirmación
+    return await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('¿Cancelar verificación?'),
+        content: const Text('¿Estás seguro de que quieres cancelar la verificación?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Continuar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text(
+              'Cancelar',
+              style: TextStyle(color: Color(0xFFE91E63)),
+            ),
+          ),
+        ],
+      ),
+    ) ?? false;
+  }
+
+ @override
+Widget build(BuildContext context) {
+  return WillPopScope(
+    onWillPop: _onWillPop,
+    child: Scaffold(
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: Text(widget.isLogin
-            ? 'Verificar Login'
-            : widget.isPasswordReset
-                ? 'Restablecer Contraseña'
-                : 'Verificar Correo'),
+        title: Text(
+          widget.isLogin
+              ? 'Verificar Login'
+              : widget.isPasswordReset
+                  ? 'Verificar Código'
+                  : 'Verificar Correo',
+          style: const TextStyle(
+            color: Color(0xFFE91E63),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Color(0xFFE91E63)),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
       ),
       body: Consumer<AuthProvider>(
         builder: (context, authProvider, child) {
-          // El LoadingWidget se activará/desactivará automáticamente
-          // si los métodos de authProvider (como verifyCodeAndLogin, sendVerificationCode)
-          // actualizan la propiedad 'isLoading' de AuthProvider.
           return LoadingWidget(
             isLoading: authProvider.isLoading,
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.all(24.0),
               child: Form(
                 key: _formKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(
-                      'Se ha enviado un código de verificación a ${widget.email}. Por favor, ingrésalo a continuación.',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.titleMedium,
+                    // Indicador de progreso (solo para reset de contraseña, no para login)
+                    if (!widget.isLogin)
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 32),
+                        child: Row(
+                          children: [
+                            _buildProgressStep(1, true, 'Correo'),
+                            Expanded(
+                              child: Container(
+                                height: 2,
+                                color: const Color(0xFFE91E63),
+                                margin: const EdgeInsets.symmetric(horizontal: 8),
+                              ),
+                            ),
+                            _buildProgressStep(2, true, 'Código'),
+                            Expanded(
+                              child: Container(
+                                height: 2,
+                                color: Colors.grey[300],
+                                margin: const EdgeInsets.symmetric(horizontal: 8),
+                              ),
+                            ),
+                            _buildProgressStep(3, false, 'Nueva Contraseña'),
+                          ],
+                        ),
+                      ),
+
+                    // Icono y título
+                    Center(
+                      child: Container(
+                        width: 80,
+                        height: 80,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFFCE4EC),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.verified_user,
+                          size: 40,
+                          color: Color(0xFFE91E63),
+                        ),
+                      ),
                     ),
-                    const SizedBox(height: 30),
-                   CustomTextField(
-                      controller: _codeController,
-                      labelText: 'Código de Verificación',
-                      keyboardType: TextInputType.number,
-                      maxLength: 6, 
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return Constants.requiredField;
-                          }
-                          final trimmedValue = value.trim();
-                          if (trimmedValue.length != 6) {
-                            return 'El código debe tener exactamente 6 dígitos';
-                          }
-                          if (!RegExp(r'^[0-9]+$').hasMatch(trimmedValue)) {
-                            return 'El código debe contener solo números';
-                          }
-                          return null;
-                        },
+                    const SizedBox(height: 24),
+
+                    Text(
+                      'Verificar Código',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF2C2C2C),
+                          ),
+                    ),
+                    const SizedBox(height: 8),
+
+                    Text(
+                      'Ingresa el código de 6 dígitos que enviamos a\n${widget.email}',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Colors.grey[600],
+                          ),
+                    ),
+                    const SizedBox(height: 40),
+
+                    // Campos de código en cuadritos
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: List.generate(6, (index) {
+                        return Container(
+                          width: 50,
+                          height: 60,
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: _controllers[index].text.isNotEmpty
+                                  ? const Color(0xFFE91E63)
+                                  : Colors.grey[300]!,
+                              width: 2,
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                            color: _controllers[index].text.isNotEmpty
+                                ? const Color(0xFFFCE4EC)
+                                : Colors.white,
+                          ),
+                          child: TextField(
+                            controller: _controllers[index],
+                            focusNode: _focusNodes[index],
+                            keyboardType: TextInputType.number,
+                            textAlign: TextAlign.center,
+                            maxLength: 1,
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF2C2C2C),
+                            ),
+                            decoration: const InputDecoration(
+                              counterText: '',
+                              border: InputBorder.none,
+                            ),
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                            ],
+                            onChanged: (value) {
+                              setState(() {});
+                              if (value.isNotEmpty && index < 5) {
+                                _focusNodes[index + 1].requestFocus();
+                              } else if (value.isEmpty && index > 0) {
+                                _focusNodes[index - 1].requestFocus();
+                              }
+
+                              if (value.isNotEmpty && index == 5) {
+                                if (_verificationCode.length == 6) {
+                                  _verifyCode();
+                                }
+                              }
+                            },
+                          ),
+                        );
+                      }),
                     ),
 
-                    const SizedBox(height: 30),
+                    const SizedBox(height: 40),
+
                     CustomButton(
                       text: widget.isLogin
                           ? 'Verificar y Entrar'
@@ -255,10 +448,52 @@ Future<void> _verifyCode() async {
                               : 'Verificar',
                       onPressed: _verifyCode,
                     ),
-                    const SizedBox(height: 20),
-                    TextButton(
-                      onPressed: _resendCode,
-                      child: const Text('¿No recibiste el código? Reenviar'),
+
+                    const SizedBox(height: 16),
+
+                    Container(
+                      width: double.infinity,
+                      height: 48,
+                      child: OutlinedButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                        },
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Color(0xFFE91E63)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          'Correo incorrecto',
+                          style: TextStyle(
+                            color: Color(0xFFE91E63),
+                            fontWeight: FontWeight.w600,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          '¿No recibiste el código? ',
+                          style: TextStyle(color: Colors.grey[600]),
+                        ),
+                        TextButton(
+                          onPressed: _resendCode,
+                          child: const Text(
+                            'Reenviar',
+                            style: TextStyle(
+                              color: Color(0xFFE91E63),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -267,6 +502,42 @@ Future<void> _verifyCode() async {
           );
         },
       ),
+    ),
+  );
+}
+
+  Widget _buildProgressStep(int step, bool isActive, String label) {
+    return Column(
+      children: [
+        Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: isActive ? const Color(0xFFE91E63) : Colors.grey[300],
+          ),
+          child: Center(
+            child: Text(
+              step.toString(),
+              style: TextStyle(
+                color: isActive ? Colors.white : Colors.grey[600],
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: isActive ? const Color(0xFFE91E63) : Colors.grey[500],
+            fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ],
     );
   }
 }

@@ -271,7 +271,6 @@ static Future<bool> checkIfAdmin(String email) async {
  // REEMPLAZAR el método verifyCodeAndLogin en auth_service.dart
 static Future<AuthResponse> verifyCodeAndLogin(String email, String password, String userType, String code) async {
   try {
-
     final response = await ApiService.verifyCodeAndLogin(email, password, userType, code);
     if (response.success && response.data != null) {
       final responseData = response.data as Map<String, dynamic>;
@@ -282,7 +281,6 @@ static Future<AuthResponse> verifyCodeAndLogin(String email, String password, St
       final String finalUserType = responseData['userType']?.toString() ?? userType;
       final int? expiresIn = responseData['expiresIn'] as int?;
 
-      // Validar que el token no esté vacío
       if (token.isEmpty) {
         print('Error: Token vacío recibido del servidor');
         return AuthResponse(
@@ -296,45 +294,28 @@ static Future<AuthResponse> verifyCodeAndLogin(String email, String password, St
         );
       }
 
-      // Validar que userData no esté completamente vacío para un login exitoso
-      if (userData.isEmpty) {
-        print('Warning: userData vacío, pero continuando con el login');
-      }
-
-      print('=== AUTH SERVICE - DATOS PROCESADOS ===');
+      print('=== AUTH SERVICE - DATOS COMPLETOS RECIBIDOS ===');
       print('Token: ${token.substring(0, 20)}...');
       print('RefreshToken: ${refreshToken ?? 'null'}');
       print('UserData: $userData');
       print('UserType: $finalUserType');
-      print('======================================');
+      print('===============================================');
 
-      // Crear AuthResponse con los datos seguros
       final authResponse = AuthResponse(
         success: true,
         message: response.message ?? 'Login exitoso',
         token: token,
         refreshToken: refreshToken,
-        user: userData.isNotEmpty ? userData : null,
+        user: userData,
         userType: finalUserType,
         expiresIn: expiresIn,
       );
 
-      // Guardar datos de autenticación
       await _saveAuthData(authResponse);
-      
-      print('=== AUTH SERVICE - GUARDADO EXITOSO ===');
-      print('Datos guardados correctamente');
-      print('======================================');
-      
+      print('✅ Datos guardados correctamente');
+
       return authResponse;
     } else {
-      // Crear AuthResponse de error con mensaje específico
-      print('=== AUTH SERVICE - ERROR ===');
-      print('Success: ${response.success}');
-      print('Message: ${response.message}');
-      print('Data: ${response.data}');
-      print('===========================');
-      
       return AuthResponse(
         success: false,
         message: response.message ?? 'Error en la verificación',
@@ -346,18 +327,10 @@ static Future<AuthResponse> verifyCodeAndLogin(String email, String password, St
       );
     }
   } catch (e) {
-    print('=== AUTH SERVICE - EXCEPCIÓN ===');
-    print('Error: $e');
-    print('===============================');
-    
     String errorMessage = e.toString();
-    
-    // Limpiar el mensaje de error
     if (errorMessage.contains('Exception:')) {
       errorMessage = errorMessage.replaceFirst('Exception:', '').trim();
     }
-    
-    // Crear AuthResponse de error
     return AuthResponse(
       success: false,
       message: errorMessage.isEmpty ? 'Error en verificación y login' : errorMessage,
@@ -425,6 +398,8 @@ static void _handleHttpError(http.Response response) {
   print('❌ Error HTTP ${response.statusCode}: ${response.body}');
   throw Exception('Error HTTP ${response.statusCode}: ${response.body}');
 }
+
+
 
 
 }

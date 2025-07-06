@@ -30,7 +30,7 @@ class Constants {
   static const String userTypeKey = 'user_type';
   static const String verificationCodeKey = 'verification_code';
 
-  // User Types (AHORA con los valores REALES del backend)
+  // User Types
   static const String adminType = 'admin';
   static const String clientType = 'cliente';
 
@@ -83,7 +83,7 @@ class Constants {
     'Armenia',
   ];
 
-  // Formato de fecha (dd/mm/yyyy)
+  // Fecha en formato dd/mm/yyyy
   static String formatDate(DateTime? date) {
     if (date == null) return 'No especificada';
     return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
