@@ -64,40 +64,50 @@ class _AdminProfileState extends State<AdminProfile> {
     super.dispose();
   }
 
-  Future<void> _updateProfile() async {
-    if (_formKey.currentState!.validate()) {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final currentUser = authProvider.currentUser;
+  // REEMPLAZAR el método _updateProfile en admin_profile.dart
+Future<void> _updateProfile() async {
+  if (_formKey.currentState!.validate()) {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final currentUser = authProvider.currentUser;
 
-      if (currentUser == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No se pudo obtener la información del usuario.')),
-        );
-        return;
-      }
-
-      final updatedUser = currentUser.copyWith(
-        nombre: _nameController.text.trim(),
-        apellido: _lastNameController.text.trim(),
-        correo: _emailController.text.trim(),
+    if (currentUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se pudo obtener la información del usuario.')),
       );
+      return;
+    }
 
-      final errorMessage = await authProvider.updateProfile(updatedUser);
+    // ✅ Incluir TODOS los campos editables
+    final updatedUser = currentUser.copyWith(
+      nombre: _nameController.text.trim(),
+      apellido: _lastNameController.text.trim(),
+      correo: _emailController.text.trim(),
+      tipoDocumento: _documentTypeController.text.trim(),
+       documento: int.tryParse(_documentNumberController.text.trim()) ?? 0,
+    );
 
-      if (!mounted) return;
+    final errorMessage = await authProvider.updateProfile(updatedUser);
 
-      if (errorMessage == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Perfil actualizado exitosamente.')),
-        );
-        Navigator.of(context).pop(true); // Regresar con éxito
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMessage)),
-        );
-      }
+    if (!mounted) return;
+
+    if (errorMessage == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Perfil actualizado exitosamente.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      Navigator.of(context).pop(true); // Regresar con éxito
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -119,66 +129,76 @@ class _AdminProfileState extends State<AdminProfile> {
                     const Icon(Icons.account_circle, size: 100, color: Colors.grey),
                     const SizedBox(height: 20),
                     CustomTextField(
-                      controller: _nameController,
-                      labelText: 'Nombre',
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return Constants.requiredField;
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 20),
-                    CustomTextField(
-                      controller: _lastNameController,
-                      labelText: 'Apellido',
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return Constants.requiredField;
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 20),
-                    CustomTextField(
-                      controller: _emailController,
-                      labelText: 'Correo Electrónico',
-                      keyboardType: TextInputType.emailAddress,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return Constants.requiredField;
-                        }
-                        if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
-                          return Constants.invalidEmail;
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 20),
-                    CustomTextField(
-                      controller: _documentTypeController,
-                      labelText: 'Tipo de Documento',
-                      readOnly: true, // No editable
-                    ),
-                    const SizedBox(height: 20),
-                    CustomTextField(
-                      controller: _documentNumberController,
-                      labelText: 'Número de Documento',
-                      readOnly: true, // No editable
-                    ),
+                    controller: _nameController,
+                    labelText: 'Nombre',
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return Constants.requiredField;
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                  CustomTextField(
+                    controller: _lastNameController,
+                    labelText: 'Apellido',
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return Constants.requiredField;
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                  CustomTextField(
+                    controller: _emailController,
+                    labelText: 'Correo Electrónico',
+                    keyboardType: TextInputType.emailAddress,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return Constants.requiredField;
+                      }
+                      if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
+                        return Constants.invalidEmail;
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                  CustomTextField(
+                    controller: _documentTypeController,
+                    labelText: 'Tipo de Documento',
+                    // ✅ EDITABLE AHORA
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return Constants.requiredField;
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                  CustomTextField(
+                    controller: _documentNumberController,
+                    labelText: 'Número de Documento',
+                    keyboardType: TextInputType.number,
+                    // ✅ EDITABLE AHORA
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return Constants.requiredField;
+                      }
+                      return null;
+                    },
+                  ),
                     const SizedBox(height: 30),
                     CustomButton(
                       text: 'Actualizar Perfil',
                       onPressed: _updateProfile,
                     ),
                     const SizedBox(height: 20),
-                    CustomButton(
+                 CustomButton(
                       text: 'Cambiar Contraseña',
                       onPressed: () {
-                        // Navegar a una pantalla de cambio de contraseña o mostrar un diálogo
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Funcionalidad de cambio de contraseña no implementada.')),
-                        );
+                        Navigator.of(context).pushNamed('/change-password');
                       },
                     ),
                   ],

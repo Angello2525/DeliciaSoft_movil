@@ -7,7 +7,6 @@ import 'package:http/http.dart' as http;
 import '../utils/constants.dart';
 import 'dart:convert';
 
-
 class AuthService {
 
   static Future<void> _saveAuthData(AuthResponse authResponse) async {
@@ -87,14 +86,25 @@ static Future<bool> requestPasswordReset(String email) async {
   }
 }
 
-  static Future<bool> resetPassword(String email, String verificationCode, String newPassword) async {
-    try {
-      final response = await ApiService.resetPassword(email, verificationCode, newPassword);
-      return response.success;
-    } catch (e) {
-      throw Exception('Error al restablecer contraseña: $e');
-    }
+  static Future<bool> resetPassword(
+  String email,
+  String verificationCode,
+  String newPassword,
+  String userType,
+) async {
+  try {
+    final response = await ApiService.resetPassword(
+      email,
+      verificationCode,
+      newPassword,
+      userType,
+    );
+    return response.success;
+  } catch (e) {
+    throw Exception('Error al restablecer contraseña: $e');
   }
+}
+
 
   static Future<ApiResponse<dynamic>> updateAdminProfile(Usuario userData) async {
     final token = await StorageService.getToken();
@@ -151,6 +161,48 @@ static Future<String?> checkUserType(String email) async {
   }
   return null;
 }
+
+ static Future<ApiResponse<Usuario>> updateUserProfileAdmin(String token, Usuario usuario) async {
+  try {
+    final url = '${Constants.baseUrl}/Usuarios/${usuario.idUsuario}';
+    final bodyJson = jsonEncode(usuario.toJsonWithoutId());
+
+    print('=== ACTUALIZANDO PERFIL USUARIO ===');
+    print('URL: $url');
+    print('Body JSON: $bodyJson');
+    print('==================================');
+
+    final response = await http.put(
+      Uri.parse(url),
+      headers: _headersWithToken(token),
+      body: bodyJson,
+    );
+
+    print('Response Status: ${response.statusCode}');
+    print('Response Body: ${response.body}');
+    print('==================================');
+
+    if (response.statusCode == 200 || response.statusCode == 204) {
+      // Si el backend no devuelve datos, retornamos el mismo usuario que enviamos
+      return ApiResponse<Usuario>(
+        success: true,
+        message: 'Usuario actualizado exitosamente',
+        data: usuario,
+      );
+    } else {
+      _handleHttpError(response);  // 👈 Aquí lanza excepción si es >= 400
+      return ApiResponse<Usuario>(
+        success: false,
+        message: 'Error actualizando usuario',
+        data: null,
+      );
+    }
+  } catch (e) {
+    print('❌ Error actualizando usuario: $e');
+    throw Exception('Error al actualizar perfil de usuario: $e');
+  }
+}
+
 
 static Future<String?> validateCredentials(String email, String password, String userType) async {
   try {
@@ -219,12 +271,11 @@ static Future<bool> checkIfAdmin(String email) async {
  // REEMPLAZAR el método verifyCodeAndLogin en auth_service.dart
 static Future<AuthResponse> verifyCodeAndLogin(String email, String password, String userType, String code) async {
   try {
-    final response = await ApiService.verifyCodeAndLogin(email, password, userType, code);
 
+    final response = await ApiService.verifyCodeAndLogin(email, password, userType, code);
     if (response.success && response.data != null) {
       final responseData = response.data as Map<String, dynamic>;
 
-      // Obtener datos con manejo seguro de nulls y valores por defecto
       final String token = responseData['token']?.toString() ?? '';
       final String? refreshToken = responseData['refreshToken']?.toString();
       final Map<String, dynamic> userData = responseData['user'] as Map<String, dynamic>? ?? <String, dynamic>{};
@@ -355,5 +406,25 @@ static Future<ApiResponse<Cliente>> getCurrentClientProfile(String email) async 
   }
   return await ApiService.getCurrentClientProfile(token, email);
 }
+
+static Future<ApiResponse> getCurrentAdminProfile(String email) async {
+  final token = await StorageService.getToken();
+  if (token == null) {
+    throw Exception('No authentication token found.');
+  }
+  return await ApiService.getCurrentAdminProfile(token, email);
+}
+static Map<String, String> _headersWithToken(String token) {
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer $token',
+  };
+}
+
+static void _handleHttpError(http.Response response) {
+  print('❌ Error HTTP ${response.statusCode}: ${response.body}');
+  throw Exception('Error HTTP ${response.statusCode}: ${response.body}');
+}
+
 
 }

@@ -79,9 +79,8 @@ class ApiService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         
-        // Generar token simple
-        final token = base64Encode(utf8.encode('${email}_${DateTime.now().millisecondsSinceEpoch}'));
-        
+        final token = data['token']?.toString() ?? '';
+
         return AuthResponse(
           success: true,
           message: 'Login exitoso',
@@ -261,15 +260,16 @@ static Future<ApiResponse<Map<String, dynamic>>> validateCredentials(String emai
   }
 }
 
-  // REEMPLAZAR el método verifyCodeAndLogin en api_service.dart
+
 static Future<ApiResponse<dynamic>> verifyCodeAndLogin(String email, String password, String userType, String code) async {
   try {
     final requestBody = {
-      'Email': email,       
-      'Password': password, 
-      'UserType': userType, 
-      'Code': code,         
-    };
+        'correo': email,
+        'password': password,
+        'userType': userType == 'usuario' ? 'admin' : userType.toLowerCase(),
+        'code': code,
+      };
+
 
     final response = await http.post(
       Uri.parse(Constants.verifyCodeAndLoginEndpoint),
@@ -448,6 +448,121 @@ static Future<ApiResponse<dynamic>> verifyCodeAndLogin(String email, String pass
   }
 }
 
+// AÑADE estos métodos a tu ApiService
+
+static Future<ApiResponse<Usuario>> getUserByEmail(String token, String email) async {
+  try {
+    final response = await http.get(
+      Uri.parse(Constants.getUserEndpoint),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> users = jsonDecode(response.body);
+      final userData = users.firstWhere(
+        (u) => u['correo'] == email,
+        orElse: () => null,
+      );
+
+      if (userData != null) {
+        // Completar datos faltantes si es necesario
+        final completeUserData = {
+          'idUsuario': userData['idUsuario'] ?? userData['id'] ?? 0,
+          'nombre': userData['nombre'] ?? '',
+          'apellido': userData['apellido'] ?? '',
+          'correo': userData['correo'] ?? '',
+          'tipoDocumento': userData['tipoDocumento'] ?? '',
+          'documento': userData['documento']?.toString() ?? '',
+          'estado': userData['estado'] ?? true,
+          'contrasena': '',
+        };
+
+        return ApiResponse<Usuario>(
+          success: true,
+          message: 'Usuario encontrado',
+          data: Usuario.fromJson(completeUserData),
+        );
+      } else {
+        return ApiResponse<Usuario>(
+          success: false,
+          message: 'Usuario no encontrado',
+          data: null,
+        );
+      }
+    } else {
+      return ApiResponse<Usuario>(
+        success: false,
+        message: 'Error HTTP ${response.statusCode}',
+        data: null,
+      );
+    }
+  } catch (e) {
+    return ApiResponse<Usuario>(
+      success: false,
+      message: 'Error: $e',
+      data: null,
+    );
+  }
+}
+
+static Future<ApiResponse<Cliente>> getClientByEmail(String token, String email) async {
+  try {
+    final response = await http.get(
+      Uri.parse(Constants.getClientEndpoint),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final dynamic data = jsonDecode(response.body);
+      List<dynamic> clients;
+
+      if (data is List) {
+        clients = data;
+      } else if (data is Map) {
+        clients = [data];
+      } else {
+        throw Exception('Respuesta inesperada del servidor');
+      }
+
+      final clientData = clients.firstWhere(
+        (c) => c['correo'] == email,
+        orElse: () => null,
+      );
+
+      if (clientData != null) {
+        return ApiResponse<Cliente>(
+          success: true,
+          message: 'Cliente encontrado',
+          data: Cliente.fromJson(clientData),
+        );
+      } else {
+        return ApiResponse<Cliente>(
+          success: false,
+          message: 'Cliente no encontrado',
+          data: null,
+        );
+      }
+    } else {
+      return ApiResponse<Cliente>(
+        success: false,
+        message: 'Error HTTP ${response.statusCode}',
+        data: null,
+      );
+    }
+  } catch (e) {
+    return ApiResponse<Cliente>(
+      success: false,
+      message: 'Error: $e',
+      data: null,
+    );
+  }
+}
 
   // ==================== REGISTRO ====================
 
@@ -530,39 +645,102 @@ static Future<ApiResponse<Cliente>> registerClient(Cliente cliente) async {
 
   // ==================== RESETEO DE CONTRASEÑA ====================
 
-  static Future<PasswordResetResponse> requestPasswordReset(String email) async {
-    try {
-      final response = await http.post(
-        Uri.parse(Constants.requestPasswordResetEndpoint),
-        headers: _headers,
-        body: jsonEncode({'Email': email}),
-      );
-      _handleHttpError(response);
-      final data = jsonDecode(response.body);
-      return PasswordResetResponse.fromJson(data);
-    } catch (e) {
-      throw Exception('Error solicitando reseteo de contraseña: $e');
+ static Future<PasswordResetResponse> requestPasswordReset(String email) async {
+  try {
+    // Primero verificar el tipo de usuario usando checkUserExists
+    final userTypeCheck = await checkUserExists(email);
+    
+    if (!userTypeCheck.success || userTypeCheck.data == null) {
+      throw Exception('Usuario no encontrado en el sistema');
     }
-  }
 
-  static Future<PasswordResetResponse> resetPassword(String email, String verificationCode, String newPassword) async {
-    try {
-      final response = await http.post(
-        Uri.parse(Constants.resetPasswordEndpoint),
-        headers: _headers,
-        body: jsonEncode({
-          'Email': email,
-          'Code': verificationCode,
-          'NewPassword': newPassword,
-        }),
-      );
-      _handleHttpError(response);
+    final userType = userTypeCheck.data!; // Será Constants.adminType o Constants.clientType
+
+    final response = await http.post(
+      Uri.parse(Constants.requestPasswordResetEndpoint),
+      headers: _headers,
+      body: jsonEncode({
+        'correo': email,        // ✅ Cambiar de 'Email' a 'correo'
+        'userType': userType,   // ✅ Agregar userType (admin o cliente)
+      }),
+    );
+
+    print('=== SOLICITANDO RESET DE CONTRASEÑA ===');
+    print('URL: ${Constants.requestPasswordResetEndpoint}');
+    print('Email: $email');
+    print('UserType encontrado: $userType');
+    print('Response Status: ${response.statusCode}');
+    print('Response Body: ${response.body}');
+    print('======================================');
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
       final data = jsonDecode(response.body);
-      return PasswordResetResponse.fromJson(data);
-    } catch (e) {
-      throw Exception('Error reseteando contraseña: $e');
+      return PasswordResetResponse(
+        success: true,
+        message: data['message']?.toString() ?? 'Código enviado exitosamente',
+        userType: userType,
+      );
+    } else {
+      _handleHttpError(response);
+      return PasswordResetResponse(
+        success: false,
+        message: 'Error enviando código de recuperación',
+        userType: userType,
+      );
     }
+  } catch (e) {
+    print('Error en requestPasswordReset: $e');
+    throw Exception('Error solicitando reseteo de contraseña: $e');
   }
+}
+
+static Future<PasswordResetResponse> resetPassword(
+  String email, 
+  String verificationCode, 
+  String newPassword, 
+  String userType  // <-- agregar aquí
+) async {
+  try {
+    final response = await http.post(
+      Uri.parse(Constants.resetPasswordEndpoint),
+      headers: _headers,
+      body: jsonEncode({
+        'correo': email,
+        'userType': userType,
+        'newPassword': newPassword,
+        'code': verificationCode,
+      }),
+    );
+
+    print('=== RESETEANDO CONTRASEÑA ===');
+    print('URL: ${Constants.resetPasswordEndpoint}');
+    print('Email: $email');
+    print('UserType enviado: $userType');
+    print('Response Status: ${response.statusCode}');
+    print('Response Body: ${response.body}');
+    print('============================');
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      final data = jsonDecode(response.body);
+      return PasswordResetResponse(
+        success: true,
+        message: data['message']?.toString() ?? 'Contraseña actualizada exitosamente',
+        userType: userType,
+      );
+    } else {
+      _handleHttpError(response);
+      return PasswordResetResponse(
+        success: false,
+        message: 'Error actualizando contraseña',
+        userType: userType,
+      );
+    }
+  } catch (e) {
+    print('Error en resetPassword: $e');
+    throw Exception('Error reseteando contraseña: $e');
+  }
+}
+
 
   // ==================== REFRESH TOKEN ====================
 
@@ -587,7 +765,7 @@ static Future<ApiResponse<Cliente>> registerClient(Cliente cliente) async {
   static Future<ApiResponse<List<Usuario>>> getAllUsers(String token) async {
     try {
       final response = await http.get(
-        Uri.parse('$__baseUrl/admin/users'),
+        Uri.parse('$__baseUrl/Usuarios'),
         headers: _headersWithToken(token),
       );
       _handleHttpError(response);
@@ -618,17 +796,79 @@ static Future<ApiResponse<Cliente>> registerClient(Cliente cliente) async {
 static Future<ApiResponse<Usuario>> getUserProfile(String token, int idUsuario) async {
   try {
     final response = await http.get(
-      Uri.parse('$__baseUrl/Usuarios/$idUsuario'),
+      Uri.parse('${Constants.baseUrl}/Usuarios/$idUsuario'),
       headers: _headersWithToken(token),
     );
-    _handleHttpError(response);
-    final data = jsonDecode(response.body);
-    return ApiResponse<Usuario>.fromJson(
-      data,
-      (Object? json) => Usuario.fromJson(json as Map<String, dynamic>),
-    );
+    
+    print('=== OBTENIENDO PERFIL USUARIO ===');
+    print('URL: ${Constants.baseUrl}/Usuarios/$idUsuario');
+    print('ID Usuario: $idUsuario');
+    print('Response Status: ${response.statusCode}');
+    print('Response Body: ${response.body}');
+    print('================================');
+    
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return ApiResponse<Usuario>(
+        success: true,
+        message: 'Usuario obtenido exitosamente',
+        data: Usuario.fromJson(data),
+      );
+    } else {
+      _handleHttpError(response);
+      return ApiResponse<Usuario>(
+        success: false,
+        message: 'Error obteniendo usuario',
+        data: null,
+      );
+    }
   } catch (e) {
-    throw Exception('Error obteniendo perfil del usuario: $e');
+    return ApiResponse<Usuario>(
+    success: false,
+    message: 'Error obteniendo perfil del usuario: $e',
+    data: null,
+  );
+  }
+}
+
+static Future<ApiResponse<Usuario>> updateUserProfileAdmin(String token, Usuario usuario) async {
+  try {
+    final url = '${Constants.baseUrl}/Usuarios/${usuario.idUsuario}';
+    final bodyJson = jsonEncode(usuario.toJsonWithoutId());
+
+    print('=== ACTUALIZANDO PERFIL USUARIO ===');
+    print('URL: $url');
+    print('Body JSON: $bodyJson');
+    print('==================================');
+
+    final response = await http.put(
+      Uri.parse(url),
+      headers: _headersWithToken(token),
+      body: bodyJson,
+    );
+
+    print('Response Status: ${response.statusCode}');
+    print('Response Body: ${response.body}');
+    print('==================================');
+
+    if (response.statusCode == 200 || response.statusCode == 204) {
+      // Si el backend no devuelve datos, retornamos el mismo usuario que enviamos
+      return ApiResponse<Usuario>(
+        success: true,
+        message: 'Usuario actualizado exitosamente',
+        data: usuario,
+      );
+    } else {
+      _handleHttpError(response);
+      return ApiResponse<Usuario>(
+        success: false,
+        message: 'Error actualizando usuario',
+        data: null,
+      );
+    }
+  } catch (e) {
+    print('❌ Error actualizando usuario: $e');
+    throw Exception('Error al actualizar perfil de usuario: $e');
   }
 }
 
@@ -676,7 +916,7 @@ static Future<ApiResponse<Usuario>> getUserProfile(String token, int idUsuario) 
   static Future<ApiResponse<Usuario>> updateUserProfile(String token, Usuario usuario) async {
     try {
       final response = await http.put(
-        Uri.parse('$__baseUrl/admin/users/${usuario.idUsuario}'),
+        Uri.parse('$__baseUrl/Usuarios/${usuario.idUsuario}'),
         headers: _headersWithToken(token),
         body: jsonEncode(usuario.toJson()),
       );
@@ -688,20 +928,30 @@ static Future<ApiResponse<Usuario>> getUserProfile(String token, int idUsuario) 
     }
   }
 
-  static Future<ApiResponse<Cliente>> updateClientProfileApi(String token, Cliente cliente) async {
+ static Future<ApiResponse<Cliente>> updateClientProfileApi(String token, Cliente cliente) async {
   try {
     final response = await http.put(
-      Uri.parse('${Constants.baseUrl}/Clientes/${cliente.idCliente}'), // ✅ RUTA CORRECTA
+      Uri.parse('${Constants.baseUrl}/Clientes/${cliente.idCliente}'),
       headers: _headersWithToken(token),
-      body: jsonEncode(cliente.toJson()),
+      body: jsonEncode(cliente.toJsonForUpdate()),
     );
-    
+
+    print('Response status: ${response.statusCode}');
+    print('Response body: ${response.body}');
+
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       return ApiResponse<Cliente>(
         success: true,
         message: 'Cliente actualizado exitosamente',
         data: Cliente.fromJson(data),
+      );
+    } else if (response.statusCode == 204) {
+      // No devuelve datos, pero consideramos éxito y devolvemos el mismo cliente
+      return ApiResponse<Cliente>(
+        success: true,
+        message: 'Cliente actualizado exitosamente (sin contenido)',
+        data: cliente,
       );
     } else {
       _handleHttpError(response);
@@ -712,14 +962,14 @@ static Future<ApiResponse<Usuario>> getUserProfile(String token, int idUsuario) 
       );
     }
   } catch (e) {
-    throw Exception('Error al actualizar cliente (admin): $e');
+    throw Exception('Error al actualizar cliente: $e');
   }
 }
 
   static Future<ApiResponse<Usuario>> updateUsuarioStatus(String token, int idUsuario, bool newStatus) async {
     try {
       final response = await http.put(
-        Uri.parse('$__baseUrl/admin/users/$idUsuario/status'),
+        Uri.parse('$__baseUrl/Usuarios/$idUsuario'),
         headers: _headersWithToken(token),
         body: jsonEncode({'estado': newStatus}), // Mantener camelCase si es lo que funciona
       );
@@ -786,7 +1036,55 @@ static Future<ApiResponse<Cliente>> getCurrentClientProfile(String token, String
   }
 }
 
+static Future<ApiResponse<Usuario>> getCurrentAdminProfile(String token, String email) async {
+  try {
+    final response = await http.get(
+      Uri.parse('${Constants.getAdminEndpoint}?correo=$email'),
+      headers: _headersWithToken(token),
+    );
 
+    print('=== OBTENIENDO PERFIL ADMIN POR CORREO ===');
+    print('Status Code: ${response.statusCode}');
+    print('Body: ${response.body}');
+    print('=========================================');
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+
+      final firstItem = (data as List).firstWhere(
+        (u) => u['correo'] == email,
+        orElse: () => null,
+      );
+
+      if (firstItem == null) {
+        return ApiResponse<Usuario>(
+          success: false,
+          message: 'No se encontró admin con ese correo',
+          data: null,
+        );
+      }
+
+      return ApiResponse<Usuario>(
+        success: true,
+        message: 'Usuario obtenido exitosamente',
+        data: Usuario.fromJson(firstItem as Map<String, dynamic>),
+      );
+    } else {
+      _handleHttpError(response);
+      return ApiResponse<Usuario>(
+        success: false,
+        message: 'Error obteniendo admin',
+        data: null,
+      );
+    }
+  } catch (e) {
+    return ApiResponse<Usuario>(
+      success: false,
+      message: 'Error al obtener admin por email: $e',
+      data: null,
+    );
+  }
+}
   static Future<List<Pedido>> getPedidos() async {
     final response = await http.get(Uri.parse('$__baseUrl/Pedidoes'));
 
@@ -1018,3 +1316,4 @@ static Future<ApiResponse<Cliente>> getCurrentClientProfile(String token, String
   }
   
 }
+

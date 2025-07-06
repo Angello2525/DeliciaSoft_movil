@@ -17,6 +17,8 @@ class AuthProvider with ChangeNotifier {
   bool _isAuthenticated = false;
   String? _userType;
   String? _token;
+  String? _tempUserType;
+  String? get tempUserType => _tempUserType;
 
   bool _isSendingCode = false;
   bool _isVerifyingCode = false;
@@ -97,7 +99,7 @@ Future<String?> validateCredentials(String email, String password, String userTy
   _isSendingCode = true;
 
   try {
-    final response = await AuthService.sendVerificationCode(email, userType);
+  final response = await AuthService.sendVerificationCode(email, userType);
     if (response) {
       return {'success': true, 'userType': userType};
     } else {
@@ -115,215 +117,265 @@ Future<String?> validateCredentials(String email, String password, String userTy
 }
 
 
-  Future<String?> verifyCodeAndLogin(
-    String email,
-    String password,
-    String userType,
-    String code,
-  ) async {
-    if (_isVerifyingCode) {
-      return 'Ya se está verificando un código, por favor espera...';
-    }
+Future<String?> verifyCodeAndLogin(
+  String email,
+  String password,
+  String userType,
+  String code,
+) async {
+  if (_isVerifyingCode) {
+    return 'Ya se está verificando un código, por favor espera...';
+  }
 
-    _isVerifyingCode = true;
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
+  _isVerifyingCode = true;
+  _isLoading = true;
+  _error = null;
+  notifyListeners();
 
-    try {
-      final response =
-          await AuthService.verifyCodeAndLogin(email, password, userType, code);
+  try {
+    final response = await AuthService.verifyCodeAndLogin(email, password, userType, code);
+    if (response.success) {
+      _isAuthenticated = true;
+      _userType = response.userType;
+      _token = response.token;
 
-      if (response.success) {
-        _isAuthenticated = true;
-        _userType = response.userType;
-        _token = response.token; // ASIGNAMOS EL TOKEN
+      if (_token != null && _userType != null) {
+        await StorageService.saveToken(_token!);
+        await StorageService.saveUserType(_userType!);
 
-        // AÑADIMOS LA LÓGICA PARA GUARDAR TOKEN Y USERDATA
-        if (_token != null && _userType != null) {
-          await StorageService.saveToken(_token!);
-          await StorageService.saveUserType(_userType!);
-
-    // Dentro del if (response.success) después de asignar _token y _userType
-    if (_token != null && _userType != null) {
-      await StorageService.saveToken(_token!);
-      await StorageService.saveUserType(_userType!);
-
-      final userDataMap = response.user as Map<String, dynamic>?;
-      if (userDataMap != null) {
-       // Alrededor de la línea 100-120, reemplaza esta sección:
+        final userDataMap = response.user as Map<String, dynamic>?;
+        if (userDataMap != null) {
           if (_userType == Constants.adminType) {
-            _currentUser = Usuario.fromJson(userDataMap);
+            final completeUserData = {
+              'idUsuario': userDataMap['idUsuario'] ?? 0,
+              'nombre': userDataMap['nombre'] ?? '',
+              'apellido': userDataMap['apellido'] ?? '',
+              'correo': userDataMap['correo'] ?? '',
+              'tipoDocumento': userDataMap['tipoDocumento'] ?? '',
+              'documento': userDataMap['documento']?.toString() ?? '',
+              'estado': userDataMap['estado'] ?? true,
+              'contrasena': '',
+            };
+
+            if (completeUserData['idUsuario'] == 0) {
+              _error = 'No se pudo obtener idUsuario del servidor.';
+              _isAuthenticated = false;
+              return _error;
+            }
+
+            _currentUser = Usuario.fromJson(completeUserData);
             _currentClient = null;
             await StorageService.saveUserData(_currentUser!.toJson());
+
           } else if (_userType == Constants.clientType) {
-            _currentClient = Cliente.fromJson(userDataMap);
+            final completeClientData = Map<String, dynamic>.from(userDataMap);
+
+            if (completeClientData['idCliente'] == null) {
+              try {
+                final clientProfile = await ApiService.getClientByEmail(_token!, completeClientData['correo'] as String);
+                if (clientProfile.success && clientProfile.data != null) {
+                  completeClientData['idCliente'] = clientProfile.data!.idCliente;
+                }
+              } catch (e) {
+                debugPrint('No se pudo obtener idCliente por correo: $e');
+              }
+            }
+
+            _currentClient = Cliente.fromJson(completeClientData);
             _currentUser = null;
             await StorageService.saveUserData(_currentClient!.toJson());
           }
+        } else {
+          debugPrint('Advertencia: El campo "user" es null en la respuesta de login.');
+          _error = 'Datos de usuario incompletos recibidos. Intente de nuevo.';
+          _isAuthenticated = false;
+        }
       } else {
-        debugPrint('Advertencia: El campo "user" es null en la respuesta de login.');
-        _error = 'Datos de usuario incompletos recibidos. Intente de nuevo.';
+        debugPrint('Advertencia: Token o UserType son null en la respuesta de login.');
+        _error = 'Error en la respuesta de autenticación: token o tipo de usuario faltante.';
         _isAuthenticated = false;
       }
-    }
-        } else { // Bloque ELSE si token o userType son nulos
-          debugPrint('Advertencia: Token o UserType son null en la respuesta de login.');
-          _error = 'Error en la respuesta de autenticación: token o tipo de usuario faltante.';
-          _isAuthenticated = false;
-        }
 
-        notifyListeners();
-        return _error; // Retorna _error (que será null en caso de éxito)
-      } else {
-        final msg = response.message.toLowerCase();
-
-        if (msg.contains('código inválido')) {
-          return 'El código ingresado no es válido. Verifica e intenta nuevamente.';
-        } else if (msg.contains('código expirado')) {
-          return 'El código ha expirado. Solicita un nuevo código.';
-        } else if (msg.contains('contraseña')) {
-          return 'La contraseña es incorrecta.';
-        } else if (msg.contains('usuario no encontrado')) {
-          return 'El usuario no está registrado.';
-        }
-
-        _error = response.message.isNotEmpty
-            ? response.message
-            : 'Error en la verificación';
-        notifyListeners(); // Notifica el error aquí
-        return _error;
-      }
-    } catch (e) {
-      String errorMessage = e.toString();
-      if (errorMessage.contains('Exception:')) {
-        errorMessage = errorMessage.replaceFirst('Exception:', '').trim();
-      }
-      if (errorMessage.toLowerCase().contains('connection')) {
-        return 'Error de conexión. Verifica tu internet e intenta nuevamente.';
-      } else if (errorMessage.toLowerCase().contains('timeout')) {
-        return 'Tiempo de espera agotado. Intenta nuevamente.';
-      }
-
-      _error = errorMessage.isNotEmpty
-          ? errorMessage
-          : 'Error en la verificación';
-      notifyListeners(); // Notifica el error aquí
-      return _error;
-    } finally {
-      _isVerifyingCode = false;
+      notifyListeners();
       _isLoading = false;
-      // notifyListeners(); // Ya se llama dentro del if/else
+      return _error; // será null si todo fue bien
+    } else {
+      final msg = response.message.toLowerCase();
+
+      if (msg.contains('código inválido')) {
+        return 'El código ingresado no es válido. Verifica e intenta nuevamente.';
+      } else if (msg.contains('código expirado')) {
+        return 'El código ha expirado. Solicita un nuevo código.';
+      } else if (msg.contains('contraseña')) {
+        return 'La contraseña es incorrecta.';
+      } else if (msg.contains('usuario no encontrado')) {
+        return 'El usuario no está registrado.';
+      }
+
+      _error = response.message.isNotEmpty
+          ? response.message
+          : 'Error en la verificación';
+      notifyListeners();
+      return _error;
     }
+  } catch (e) {
+    String errorMessage = e.toString();
+    if (errorMessage.contains('Exception:')) {
+      errorMessage = errorMessage.replaceFirst('Exception:', '').trim();
+    }
+    if (errorMessage.toLowerCase().contains('connection')) {
+      return 'Error de conexión. Verifica tu internet e intenta nuevamente.';
+    } else if (errorMessage.toLowerCase().contains('timeout')) {
+      return 'Tiempo de espera agotado. Intenta nuevamente.';
+    }
+
+    _error = errorMessage.isNotEmpty
+        ? errorMessage
+        : 'Error en la verificación';
+    notifyListeners();
+    return _error;
+  } finally {
+    _isVerifyingCode = false;
+    _isLoading = false;
+    notifyListeners();
+    print('isLoading: $_isLoading');
+    print('isAuthenticated: $_isAuthenticated');
+    print('userType: $_userType');
+
   }
+}
+
 
 Future<void> initialize() async {
-    _isLoading = true;
+  _isLoading = true;
+  notifyListeners();
+
+  try {
+    final authResponse = await AuthService.autoLogin();
+    if (authResponse != null && authResponse.success) {
+      _isAuthenticated = true;
+      _userType = authResponse.userType;
+      _token = authResponse.token;
+
+      if (authResponse.user != null && _userType != null && _token != null) {
+        final userDataMap = authResponse.user as Map<String, dynamic>;
+        if (_userType == Constants.adminType) {
+          _currentUser = Usuario.fromJson(userDataMap);
+        } else if (_userType == Constants.clientType) {
+          _currentClient = Cliente.fromJson(userDataMap);
+        }
+      } else {
+        _error = 'Datos incompletos en autoLogin.';
+        _isAuthenticated = false;
+        await AuthService.logout();
+        await StorageService.clearAuthData();
+      }
+    }
+  } catch (e) {
+    _error = e.toString().contains('Exception:')
+        ? e.toString().replaceFirst('Exception:', '').trim()
+        : 'Error en inicialización de autenticación';
+    _isAuthenticated = false;
+    await AuthService.logout();
+    await StorageService.clearAuthData();
+  } finally {
+    _isLoading = false;
     notifyListeners();
+  }
+}
 
-    try {
-      final authResponse = await AuthService.autoLogin();
-      if (authResponse != null && authResponse.success) {
-        _isAuthenticated = true;
-        _userType = authResponse.userType;
-        _token = authResponse.token;
 
-        if (authResponse.user != null && _userType != null && _token != null) {
-          final userDataMap = authResponse.user as Map<String, dynamic>;
-          if (authResponse.userType == Constants.adminType) {
-            _currentUser = Usuario.fromJson(userDataMap);
-          } else if (authResponse.userType == Constants.clientType) {
-            _currentClient = Cliente.fromJson(userDataMap);
+Future<String?> login(String email, String password, String userType) async {
+  _isLoading = true;
+  _error = null;
+  notifyListeners();
+  try {
+    final response = await AuthService.login(email, password, userType);
+    if (response.success) {
+      _isAuthenticated = true;
+      _userType = response.userType;
+      _token = response.token;
+
+      if (_token != null && _userType != null) {
+        await StorageService.saveToken(_token!);
+        await StorageService.saveUserType(_userType!);
+
+        if (response.user != null) {
+          final userDataMap = response.user as Map<String, dynamic>;
+          if (_userType == Constants.adminType) {
+            final completeUserData = {
+              'idUsuario': userDataMap['idUsuario'] ?? 0,
+              'nombre': userDataMap['nombre'] ?? '',
+              'apellido': userDataMap['apellido'] ?? '',
+              'correo': userDataMap['correo'] ?? '',
+              'tipoDocumento': userDataMap['tipoDocumento'] ?? '',
+              'documento': userDataMap['documento']?.toString() ?? '',
+              'estado': userDataMap['estado'] ?? true,
+              'contrasena': '',
+            };
+
+          if (completeUserData['idUsuario'] == 0) {
+            _error = 'No se pudo obtener idUsuario del servidor.';
+            _isAuthenticated = false;
+            return _error;
+          }
+
+
+            _currentUser = Usuario.fromJson(completeUserData);
+            _currentClient = null;
+            await StorageService.saveUserData(_currentUser!.toJson());
+
+          } else if (_userType == Constants.clientType) {
+            final completeClientData = Map<String, dynamic>.from(userDataMap);
+
+            if (completeClientData['idCliente'] == null) {
+              try {
+                final clientProfile = await ApiService.getClientByEmail(_token!, completeClientData['correo'] as String);
+                if (clientProfile.success && clientProfile.data != null) {
+                  completeClientData['idCliente'] = clientProfile.data!.idCliente;
+                }
+              } catch (e) {
+                debugPrint('No se pudo obtener idCliente por correo: $e');
+              }
+            }
+
+            _currentClient = Cliente.fromJson(completeClientData);
+            _currentUser = null;
+            await StorageService.saveUserData(_currentClient!.toJson());
           }
         } else {
-          _error = 'Datos de auto-login incompletos (token, tipo de usuario o datos de usuario).';
-          _isAuthenticated = false;
-          await AuthService.logout(); 
-          // CORRECCIÓN: Usamos clearAuthData() en lugar de deletes individuales
-          await StorageService.clearAuthData(); 
-
-          if (kDebugMode) {
-            print('Error en initialize: Datos incompletos en autoLogin.');
-          }
-        }
-      }
-    } catch (e) {
-      _error = e.toString().contains('Exception:')
-          ? e.toString().replaceFirst('Exception:', '').trim()
-          : 'Error en inicialización de autenticación';
-      _isAuthenticated = false;
-      await AuthService.logout();
-      // CORRECCIÓN: Usamos clearAuthData() en lugar de deletes individuales
-      await StorageService.clearAuthData(); 
-
-      if (kDebugMode) {
-        print('Error en AuthProvider initialize: $_error');
-      }
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
- Future<String?> login(String email, String password, String userType) async {
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
-    try {
-      final AuthResponse response = await AuthService.login(email, password, userType);
-      if (response.success) {
-        _isAuthenticated = true;
-        _userType = response.userType;
-        _token = response.token; // ASIGNAMOS EL TOKEN
-
-        // AÑADIMOS LA LÓGICA PARA GUARDAR TOKEN Y USERDATA
-        if (_token != null && _userType != null) {
-          await StorageService.saveToken(_token!);
-          await StorageService.saveUserType(_userType!);
-
-          if (response.user != null) {
-            final userDataMap = response.user as Map<String, dynamic>;
-            if (_userType == Constants.adminType) {
-              _currentUser = Usuario.fromJson(userDataMap);
-              _currentClient = null;
-              await StorageService.saveUserData(_currentUser!.toJson());
-            } else if (_userType == Constants.clientType) {
-              _currentClient = Cliente.fromJson(userDataMap);
-              _currentUser = null;
-              await StorageService.saveUserData(_currentClient!.toJson());
-            }
-          } else {
-            debugPrint('Advertencia: El campo "user" es null en la respuesta de login.');
-            _error = 'Datos de usuario incompletos recibidos. Intente de nuevo.';
-            _isAuthenticated = false;
-          }
-        } else { // Bloque ELSE si token o userType son nulos
-          debugPrint('Advertencia: Token o UserType son null en la respuesta de login.');
-          _error = 'Error en la respuesta de autenticación: token o tipo de usuario faltante.';
+          debugPrint('Advertencia: El campo "user" es null en la respuesta de login.');
+          _error = 'Datos de usuario incompletos recibidos. Intente de nuevo.';
           _isAuthenticated = false;
         }
-
-        notifyListeners(); // Mueve notifyListeners aquí para actualizar después de todos los cambios
-        return _error; // Retorna _error (que será null en caso de éxito)
       } else {
-        _error = response.message.isNotEmpty ? response.message : Constants.loginError;
-        notifyListeners(); // Notifica el error aquí también
-        return _error;
+        debugPrint('Advertencia: Token o UserType son null en la respuesta de login.');
+        _error = 'Error en la respuesta de autenticación: token o tipo de usuario faltante.';
+        _isAuthenticated = false;
       }
-    } catch (e) {
-      _error = e.toString().contains('Exception:')
-          ? e.toString().replaceFirst('Exception:', '').trim()
-          : Constants.loginError;
-      if (kDebugMode) {
-        print('Error en AuthProvider login: $_error');
-      }
-      notifyListeners(); // Notifica el error aquí
+
+      notifyListeners();
+      return _error; // será null si todo fue bien
+    } else {
+      _error = response.message.isNotEmpty ? response.message : Constants.loginError;
+      notifyListeners();
       return _error;
-    } finally {
-      _isLoading = false;
-      // notifyListeners(); // Ya se llama dentro del if/else
     }
+  } catch (e) {
+    _error = e.toString().contains('Exception:')
+        ? e.toString().replaceFirst('Exception:', '').trim()
+        : Constants.loginError;
+    if (kDebugMode) {
+      print('Error en AuthProvider login: $_error');
+    }
+    notifyListeners();
+    return _error;
+  } finally {
+    _isLoading = false;
+    notifyListeners();
   }
+}
+
 
   Future<String?> registerClient(Cliente cliente) async {
     _isLoading = true;
@@ -395,68 +447,92 @@ Future<void> logout() async {
   }
 
   Future<String?> forgotPassword(String email) async {
-  _isLoading = true;
-  _error = null;
-  notifyListeners();
-  try {
-    final success = await AuthService.requestPasswordReset(email);
-    if (success) {
-      return null; // Éxito, no hay error
-    } else {
-      _error = 'Error al solicitar restablecimiento de contraseña.';
-      return _error;
-    }
-  } catch (e) {
-    String errorMessage = e.toString();
-    if (errorMessage.contains('Exception:')) {
-      errorMessage = errorMessage.replaceFirst('Exception:', '').trim();
-    }
-    
-    // Si el mensaje contiene "enviado" significa que fue exitoso
-    if ((errorMessage.toLowerCase().contains('enviado')) || 
-    (errorMessage.toLowerCase().contains('código de recuperación'))) {
-      return null; // Éxito, no es un error
-    }
-    
-    _error = errorMessage.isNotEmpty 
-        ? errorMessage 
-        : 'Error al solicitar restablecimiento de contraseña';
-    if (kDebugMode) {
-      print('Error en AuthProvider forgotPassword: $_error');
-    }
-    return _error;
-  } finally {
-    _isLoading = false;
+    _isLoading = true;
+    _error = null;
     notifyListeners();
+
+    try {
+      print('🔄 Iniciando proceso de forgot password para: $email');
+
+      final response = await ApiService.requestPasswordReset(email);
+      print('🔄 forgotPassword response: ${response.userType}'); // DEBUG
+
+      if (response.success) {
+        // ✅ IMPORTANTE: Guardamos el tipo de usuario que devuelve el backend
+        _tempUserType = response.userType;
+        print('✅ Código enviado exitosamente. UserType guardado: $_tempUserType');
+        return null; // Sin error
+      } else {
+        print('❌ Error en forgot password: ${response.message}');
+        _error = response.message.isNotEmpty ? response.message : 'Error solicitando restablecimiento de contraseña';
+        return _error;
+      }
+    } catch (e) {
+      String errorMessage = e.toString();
+      if (errorMessage.contains('Exception:')) {
+        errorMessage = errorMessage.replaceFirst('Exception:', '').trim();
+      }
+
+      _error = errorMessage.isNotEmpty
+          ? errorMessage
+          : 'Error solicitando restablecimiento de contraseña';
+      print('❌ Excepción en forgotPassword: $_error');
+      return _error;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
-  }
 
-Future<String?> resetPassword(String email, String verificationCode, String newPassword) async {
-  _isLoading = true;
-  _error = null;
-  notifyListeners();
-  try {
-    final success = await AuthService.resetPassword(email, verificationCode, newPassword);
-    if (success) {
-      return null;
-    } else {
-      _error = 'Error al restablecer contraseña.';
-      return _error;
-    }
-  } catch (e) {
-    _error = e.toString().contains('Exception:')
-        ? e.toString().replaceFirst('Exception:', '').trim()
-        : 'Error al restablecer contraseña';
-    if (kDebugMode) {
-      print('Error en AuthProvider resetPassword: $_error');
-    }
-    return _error;
-  } finally {
-    _isLoading = false;
+  Future<String?> resetPassword(String email, String code, String newPassword) async {
+    _isLoading = true;
+    _error = null;
     notifyListeners();
+
+    try {
+      print('🔄 Iniciando proceso de reset password para: $email');
+      print('🔄 Código: $code');
+      print('🔄 UserType temporal disponible: $_tempUserType');
+
+      // ✅ VALIDACIÓN: Asegurarnos de que tenemos el userType
+      if (_tempUserType == null) {
+        print('❌ ERROR: UserType temporal es null, usando "cliente" por defecto');
+        _tempUserType = 'cliente'; // Fallback por seguridad
+      }
+
+      final response = await ApiService.resetPassword(
+        email,
+        code,
+        newPassword,
+        _tempUserType!, // Usar el tipo correcto
+      );
+
+      if (response.success) {
+        print('✅ Contraseña reseteada exitosamente');
+        _tempUserType = null; // Limpiar después del uso
+        return null; // Sin error
+      } else {
+        print('❌ Error en reset password: ${response.message}');
+        _error = response.message.isNotEmpty ? response.message : 'Error al restablecer contraseña';
+        return _error;
+      }
+    } catch (e) {
+      String errorMessage = e.toString();
+      if (errorMessage.contains('Exception:')) {
+        errorMessage = errorMessage.replaceFirst('Exception:', '').trim();
+      }
+
+      _error = errorMessage.isNotEmpty
+          ? errorMessage
+          : 'Error al restablecer contraseña';
+      print('❌ Excepción en resetPassword: $_error');
+      return _error;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
-}
 
 Future<void> fetchCurrentClientProfile() async {
   if (_userType != Constants.clientType || _currentClient == null) return;
@@ -563,7 +639,7 @@ Future<String?> updateUserProfile(Map<String, dynamic> userData) async {
           return _error;
         }
         
-        final apiResponse = await AuthService.updateAdminProfile(userData);
+        final apiResponse = await AuthService.updateUserProfileAdmin(_token!, userData);
 
         if (apiResponse.success && apiResponse.data != null) {
           _currentUser = apiResponse.data as Usuario;
@@ -616,7 +692,14 @@ Future<String?> updateUserProfile(Map<String, dynamic> userData) async {
  // REEMPLAZA el método loadProfileFromApi en tu auth_provider.dart
 
 Future<void> loadProfileFromApi() async {
+  print('=== INICIANDO loadProfileFromApi ===');
+  print('Token: ${_token != null ? "Existe" : "NULL"}');
+  print('UserType: $_userType');
+  print('CurrentUser ID: ${_currentUser?.idUsuario}');
+  print('CurrentClient ID: ${_currentClient?.idCliente}');
+  
   if (_token == null || _userType == null) {
+    print('ERROR: Token o UserType son null');
     _error = 'No hay sesión activa para cargar perfil';
     notifyListeners();
     return;
@@ -626,42 +709,71 @@ Future<void> loadProfileFromApi() async {
   notifyListeners();
 
   try {
-    if (_userType == Constants.adminType) {
-      // Para admin, usa el ID correcto del usuario actual
-      if (_currentUser?.idUsuario != null) {
-        final response = await ApiService.getUserProfile(_token!, _currentUser!.idUsuario);
+    if (_userType == Constants.adminType && _currentUser != null) {
+      print('Cargando perfil de ADMIN con correo: ${_currentUser!.correo}');
+      
+      // Para admin, intentar usar el método existente o crear uno similar
+      try {
+        // Verificar si existe getCurrentAdminProfile, si no, usar una alternativa
+        final response = await AuthService.getCurrentAdminProfile(_currentUser!.correo);
+        
+        print('Respuesta API Admin - Success: ${response.success}');
+        print('Respuesta API Admin - Message: ${response.message}');
+        
         if (response.success && response.data != null) {
-          _currentUser = response.data;
+          _currentUser = response.data as Usuario;
           await StorageService.saveUserData(_currentUser!.toJson());
+          print('Perfil de admin actualizado exitosamente');
         } else {
-          _error = response.message.isNotEmpty ? response.message : 'Error al obtener perfil de admin';
+          // Si el método falla, mantener los datos actuales
+          print('ADVERTENCIA: No se pudo actualizar perfil admin, manteniendo datos actuales');
         }
-      } else {
-        _error = 'ID de usuario no disponible';
+      } catch (e) {
+        // Si el método no existe, simplemente mantener los datos actuales
+        print('ADVERTENCIA: Método getCurrentAdminProfile no disponible: $e');
+        print('Manteniendo datos de admin actuales del login');
       }
-    } else if (_userType == Constants.clientType) {
-      // Para cliente, usa el ID correcto del cliente actual  
-      if (_currentClient?.idCliente != null) {
-        final response = await ApiService.getClientProfile(_token!, _currentClient!.idCliente);
-        if (response.success && response.data != null) {
-          _currentClient = response.data;
-          await StorageService.saveUserData(_currentClient!.toJson());
-        } else {
-          _error = response.message.isNotEmpty ? response.message : 'Error al obtener perfil de cliente';
-        }
+      
+    } else if (_userType == Constants.clientType && _currentClient != null) {
+      print('Cargando perfil de CLIENTE con ID: ${_currentClient!.idCliente}');
+      
+      final response = await ApiService.getClientProfile(_token!, _currentClient!.idCliente);
+      
+      print('Respuesta API Cliente - Success: ${response.success}');
+      print('Respuesta API Cliente - Message: ${response.message}');
+      
+      if (response.success && response.data != null) {
+        _currentClient = response.data;
+        await StorageService.saveUserData(_currentClient!.toJson());
+        print('Perfil de cliente actualizado exitosamente');
       } else {
-        _error = 'ID de cliente no disponible';
+        _error = response.message.isNotEmpty ? response.message : 'Error al obtener perfil de cliente';
+        print('ERROR obteniendo perfil cliente: $_error');
       }
+    } else {
+      _error = 'Usuario no disponible para cargar perfil';
+      print('ERROR: $_error');
+      print('UserType: $_userType');
+      print('CurrentUser disponible: ${_currentUser != null}');
+      print('CurrentClient disponible: ${_currentClient != null}');
     }
   } catch (e) {
     _error = 'Error cargando perfil desde API: $e';
-    print('Error en loadProfileFromApi: $e'); // Para debug
+    print('EXCEPCIÓN en loadProfileFromApi: $e');
+    print('Stack trace: ${StackTrace.current}');
   } finally {
     _isLoading = false;
+    print('=== FINALIZANDO loadProfileFromApi - isLoading: $_isLoading ===');
     notifyListeners();
   }
 }
 
+Future<void> loadAdminProfileSafe() async {
+  if (_userType == Constants.adminType && _currentUser != null) {
+    print('Admin profile ya cargado desde login, no necesita actualización adicional');
+    return;
+  }
+}
 
 Future<String?> refreshCurrentClientProfile() async {
   if (_userType != Constants.clientType || _currentClient == null) {

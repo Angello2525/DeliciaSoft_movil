@@ -116,18 +116,19 @@ class TokenResponse {
 class PasswordResetResponse {
   final bool success;
   final String message;
+  final String userType; // ✅ Importante: debe incluir el userType
 
   PasswordResetResponse({
     required this.success,
     required this.message,
+    required this.userType,
   });
 
   factory PasswordResetResponse.fromJson(Map<String, dynamic> json) {
-  return PasswordResetResponse(
-    success: json['success'] as bool? ?? false,
-    message: json['message']?.toString() ?? '',
-  );
-}
-
-  Map<String, dynamic> toJson() => _$PasswordResetResponseToJson(this);
+    return PasswordResetResponse(
+      success: json['success'] ?? false,
+      message: json['message'] ?? '',
+      userType: json['userType'] ?? 'cliente',
+    );
+  }
 }
