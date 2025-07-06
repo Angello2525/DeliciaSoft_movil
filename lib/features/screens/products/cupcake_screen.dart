@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
+import '../../models/General_models.dart';
+import '../../services/cupcake_api_services.dart';
 import 'Detail/CupcakeDetailScreen.dart';
-import '../../models/product_model.dart';
 
 class CupcakeScreen extends StatefulWidget {
   final String categoryTitle;
@@ -13,110 +15,115 @@ class CupcakeScreen extends StatefulWidget {
 
 class _CupcakeScreenState extends State<CupcakeScreen> {
   final TextEditingController _searchController = TextEditingController();
-
-  final List<Map<String, String>> allProductos = [
-    {
-      'nombre': 'OreoCupcake',
-      'imagen': 'https://i.pinimg.com/736x/6d/d3/f4/6dd3f426534070096400f54cd7a8f731.jpg',
-      'descripcion': 'Cupcake relleno de crema con topping de Oreo',
-    },
-    {
-      'nombre': 'Tiramisu Cupcake',
-      'imagen': 'https://i.pinimg.com/736x/fb/04/00/fb04008fe246588b43a3f335b0fb0e29.jpg',
-      'descripcion': 'Cupcake con notas de café y centro estilo tiramisú',
-    },
-    {
-      'nombre': 'Cupcake tradicional',
-      'imagen': 'https://i.pinimg.com/736x/b2/65/17/b265177d9b96b5a2a4d1234cf87f8b2e.jpg',
-      'descripcion': 'Cupcake vainilla clásico, cobertura de crema dulce',
-    },
-    {
-      'nombre': 'Cupcake pink',
-      'imagen': 'https://i.pinimg.com/736x/e2/57/b8/e257b877d663614e1461deb5dfffd4ce.jpg',
-      'descripcion': 'Cupcake rosado con chispas y cobertura de frambuesa',
-    },
-  ];
-
-  List<Map<String, String>> filteredProductos = [];
-  bool isLoading = false;
+  final ProductoApiService _apiService = ProductoApiService();
+  
+  List<ProductModel> allProductos = [];
+  List<ProductModel> filteredProductos = [];
+  bool isLoading = true;
+  String? errorMessage;
 
   @override
   void initState() {
     super.initState();
-    filteredProductos = List.from(allProductos);
+    _fetchProductos();
     _searchController.addListener(_filterProducts);
+  }
+
+  Future<void> _fetchProductos() async {
+    try {
+      setState(() {
+        isLoading = true;
+        errorMessage = null;
+      });
+
+      // Obtener productos de fresas con crema directamente
+      List<ProductModel> productos = await _apiService.obtenerProductosPorCategoria('cupcake');
+      
+      if (mounted) {
+        setState(() {
+          allProductos = productos;
+          filteredProductos = List.from(allProductos);
+        });
+      }
+      
+    } on HttpException catch (e) {
+      errorMessage = e.message;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage!),
+            backgroundColor: Colors.redAccent,
+            action: SnackBarAction(
+              label: 'Reintentar',
+              textColor: Colors.white,
+              onPressed: _fetchProductos,
+            ),
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    } catch (e) {
+      errorMessage = 'Error inesperado: ${e.toString()}';
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage!),
+            backgroundColor: Colors.redAccent,
+            action: SnackBarAction(
+              label: 'Reintentar',
+              textColor: Colors.white,
+              onPressed: _fetchProductos,
+            ),
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
+    }
   }
 
   void _filterProducts() {
     final query = _searchController.text.toLowerCase().trim();
-    setState(() {
-      if (query.isEmpty) {
-        filteredProductos = List.from(allProductos);
-      } else {
-        filteredProductos = allProductos.where((producto) {
-          final nombre = producto['nombre']?.toLowerCase() ?? '';
-          final descripcion = producto['descripcion']?.toLowerCase() ?? '';
-          return nombre.contains(query) || descripcion.contains(query);
-        }).toList();
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _searchController.removeListener(_filterProducts);
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  void _navigateToDetail(Map<String, String> producto) {
-    final nombre = producto['nombre'];
-    final descripcion = producto['descripcion'] ?? 'Cupcake personalizado';
-    final imagen = producto['imagen'];
-
-    if (nombre == null || imagen == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Error: Datos del producto incompletos'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
+    if (mounted) {
+      setState(() {
+        if (query.isEmpty) {
+          filteredProductos = List.from(allProductos);
+        } else {
+          filteredProductos = allProductos
+              .where((producto) => 
+                  producto.nombreProducto.toLowerCase().contains(query) ||
+                  (producto.nombreCategoria?.toLowerCase().contains(query) ?? false))
+              .toList();
+        }
+      });
     }
-
-    final productModel = ProductModel(
-      title: nombre,
-      description: descripcion,
-      imageUrl: imagen,
-      price: 0.0,
-    );
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => CupcakeDetailScreen(product: productModel),
-      ),
-    );
   }
 
-  Widget buildCard(Map<String, String> producto) {
-    final nombre = producto['nombre'] ?? 'Sin nombre';
-    final imagen = producto['imagen'] ?? '';
+  void _navigateToDetail(ProductModel producto) {
+  // Navigator.push(
+  //   context,
+  //   MaterialPageRoute(
+  //     builder: (context) => ProductDetailScreen(product: producto),
+  //   ),
+  // );
+}
 
-    return GestureDetector(
-      onTap: () => _navigateToDetail(producto),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          color: Colors.white,
-          boxShadow: const [
-            BoxShadow(
-              color: Color.fromARGB(30, 0, 0, 0),
-              blurRadius: 10,
-              offset: Offset(0, 4),
-            ),
-          ],
-        ),
+  Widget _buildCard(ProductModel producto) {
+    final nombre = producto.nombreProducto;
+    final imagen = producto.urlImg ?? '';
+    final precio = producto.precioProducto;
+
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: InkWell(
+        onTap: () => _navigateToDetail(producto),
+        borderRadius: BorderRadius.circular(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -124,35 +131,7 @@ class _CupcakeScreenState extends State<CupcakeScreen> {
               flex: 3,
               child: ClipRRect(
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                child: imagen.isNotEmpty
-                    ? Image.network(
-                        imagen,
-                        fit: BoxFit.cover,
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return Center(
-                            child: CircularProgressIndicator(
-                              value: loadingProgress.expectedTotalBytes != null
-                                  ? loadingProgress.cumulativeBytesLoaded /
-                                      loadingProgress.expectedTotalBytes!
-                                  : null,
-                              valueColor: const AlwaysStoppedAnimation<Color>(Colors.pinkAccent),
-                            ),
-                          );
-                        },
-                        errorBuilder: (_, __, ___) => Container(
-                          color: Colors.grey[100],
-                          child: const Center(
-                            child: Icon(Icons.cookie, size: 50, color: Colors.pinkAccent),
-                          ),
-                        ),
-                      )
-                    : Container(
-                        color: Colors.grey[100],
-                        child: const Center(
-                          child: Icon(Icons.cookie, size: 50, color: Colors.pinkAccent),
-                        ),
-                      ),
+                child: _buildProductImage(imagen),
               ),
             ),
             Expanded(
@@ -176,6 +155,17 @@ class _CupcakeScreenState extends State<CupcakeScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
+                    if (precio > 0) ...[
+                      Text(
+                        '\$${precio.toStringAsFixed(0)}',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                    ],
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
@@ -201,8 +191,127 @@ class _CupcakeScreenState extends State<CupcakeScreen> {
     );
   }
 
+  Widget _buildProductImage(String imageUrl) {
+    if (imageUrl.isEmpty) {
+      return Container(
+        color: Colors.grey[100],
+        child: const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.cake,
+                size: 50,
+                color: Colors.pinkAccent,
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Cupcake',
+                style: TextStyle(
+                  color: Colors.pinkAccent,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Image.network(
+      imageUrl,
+      fit: BoxFit.cover,
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return Center(
+          child: CircularProgressIndicator(
+            value: loadingProgress.expectedTotalBytes != null
+                ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                : null,
+            color: Colors.pinkAccent,
+            strokeWidth: 2,
+          ),
+        );
+      },
+      errorBuilder: (context, error, stackTrace) => Container(
+        color: Colors.grey[100],
+        child: const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.broken_image, size: 40, color: Colors.grey),
+              SizedBox(height: 4),
+              Text(
+                'Sin imagen',
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            _searchController.text.isNotEmpty ? Icons.search_off : Icons.cake_outlined,
+            size: 80,
+            color: Colors.grey[400],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            _searchController.text.isNotEmpty 
+                ? 'No se encontraron resultados'
+                : 'No hay productos disponibles',
+            style: TextStyle(
+              fontSize: 18,
+              color: Colors.grey[600],
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _searchController.text.isNotEmpty
+                ? 'Intenta con otro término de búsqueda'
+                : 'Verifica tu conexión a internet',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[500],
+            ),
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton.icon(
+            onPressed: _fetchProductos,
+            icon: const Icon(Icons.refresh),
+            label: const Text('Reintentar'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.pinkAccent,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(25),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _searchController.removeListener(_filterProducts);
+    _searchController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
+    print(' Productos filtrados: ${filteredProductos.length}');
     return Scaffold(
       backgroundColor: const Color(0xFFFFF1F6),
       appBar: AppBar(
@@ -221,119 +330,131 @@ class _CupcakeScreenState extends State<CupcakeScreen> {
             fontWeight: FontWeight.bold,
           ),
         ),
+        actions: [
+          if (!isLoading)
+            IconButton(
+              icon: const Icon(Icons.refresh, color: Colors.white),
+              onPressed: _fetchProductos,
+              tooltip: 'Actualizar productos',
+            ),
+        ],
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Buscar en ${widget.categoryTitle.toLowerCase()}...',
-                hintStyle: TextStyle(color: Colors.grey[500]),
-                prefixIcon: const Icon(Icons.search, color: Colors.grey),
-                suffixIcon: ValueListenableBuilder<TextEditingValue>(
-                  valueListenable: _searchController,
-                  builder: (context, value, child) {
-                    return value.text.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear, color: Colors.grey),
-                            onPressed: () {
-                              _searchController.clear();
-                              FocusScope.of(context).unfocus();
-                            },
-                          )
-                        : const SizedBox.shrink();
-                  },
-                ),
-                filled: true,
-                fillColor: Colors.white,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(30),
-                  borderSide: BorderSide.none,
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(30),
-                  borderSide: BorderSide.none,
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(30),
-                  borderSide: const BorderSide(color: Colors.pinkAccent, width: 2),
-                ),
-              ),
-            ),
-          ),
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.pink[50],
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.pink[200]!),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.info_outline, color: Colors.pink[600], size: 20),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                                        'Toca cualquier cupcake para personalizarlo',
+      body: isLoading
+          ? const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(
+                    color: Colors.pinkAccent,
+                    strokeWidth: 3,
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'Cargando productos...',
                     style: TextStyle(
-                      color: Colors.pink[700],
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
+                      color: Colors.grey,
+                      fontSize: 16,
                     ),
+                  ),
+                ],
+              ),
+            )
+          : Column(
+              children: [
+                // Barra de búsqueda
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: 'Buscar en ${widget.categoryTitle.toLowerCase()}...',
+                      hintStyle: TextStyle(color: Colors.grey[500]),
+                      prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                      suffixIcon: ValueListenableBuilder<TextEditingValue>(
+                        valueListenable: _searchController,
+                        builder: (context, value, child) {
+                          return value.text.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear, color: Colors.grey),
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    FocusScope.of(context).unfocus();
+                                  },
+                                )
+                              : const SizedBox.shrink();
+                        },
+                      ),
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30),
+                        borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30),
+                        borderSide: const BorderSide(color: Colors.pinkAccent, width: 2),
+                      ),
+                    ),
+                  ),
+                ),
+                
+                // Banner informativo
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.pink[50],
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.pink[200]!),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline, color: Colors.pink[600], size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Toca cualquier producto para personalizarlo',
+                          style: TextStyle(
+                            color: Colors.pink[700],
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                // Lista/Grid de productos
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: filteredProductos.isEmpty
+                        ? _buildEmptyState()
+                        : RefreshIndicator(
+                            onRefresh: _fetchProductos,
+                            color: Colors.pinkAccent,
+                            child: GridView.builder(
+                              physics: const AlwaysScrollableScrollPhysics(
+                                parent: BouncingScrollPhysics(),
+                              ),
+                              itemCount: filteredProductos.length,
+                              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                crossAxisSpacing: 16,
+                                mainAxisSpacing: 16,
+                                childAspectRatio: 0.68,
+                              ),
+                              itemBuilder: (context, index) {
+                                return _buildCard(filteredProductos[index]);
+                              },
+                            ),
+                          ),
                   ),
                 ),
               ],
             ),
-          ),
-
-          // 🧁 Grid de productos
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: filteredProductos.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.search_off, size: 80, color: Colors.grey[400]),
-                          const SizedBox(height: 16),
-                          Text(
-                            'No se encontraron cupcakes',
-                            style: TextStyle(
-                              fontSize: 18,
-                              color: Colors.grey[600],
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Intenta con otro término de búsqueda',
-                            style: TextStyle(fontSize: 14, color: Colors.grey[500]),
-                          ),
-                        ],
-                      ),
-                    )
-                  : GridView.builder(
-                      physics: const BouncingScrollPhysics(),
-                      itemCount: filteredProductos.length,
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 16,
-                        mainAxisSpacing: 16,
-                        childAspectRatio: 0.75,
-                      ),
-                      itemBuilder: (context, index) {
-                        return buildCard(filteredProductos[index]);
-                      },
-                    ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
