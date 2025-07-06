@@ -298,13 +298,10 @@ Future<void> _updateProfile() async {
                       onPressed: _updateProfile,
                     ),
                     const SizedBox(height: 20),
-                    CustomButton(
+                   CustomButton(
                       text: 'Cambiar Contraseña',
                       onPressed: () {
-                        // Navegar a una pantalla de cambio de contraseña o mostrar un diálogo
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Funcionalidad de cambio de contraseña no implementada.')),
-                        );
+                        Navigator.of(context).pushNamed('/change-password');
                       },
                     ),
                   ],

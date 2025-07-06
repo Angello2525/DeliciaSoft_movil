@@ -168,6 +168,7 @@ Future<String?> verifyCodeAndLogin(
             await StorageService.saveUserData(_currentUser!.toJson());
 
           } else if (_userType == Constants.clientType) {
+            // NO toques hashContraseña, deja el que viene del backend
             final completeClientData = Map<String, dynamic>.from(userDataMap);
 
             if (completeClientData['idCliente'] == null) {
@@ -186,51 +187,25 @@ Future<String?> verifyCodeAndLogin(
             await StorageService.saveUserData(_currentClient!.toJson());
           }
         } else {
-          debugPrint('Advertencia: El campo "user" es null en la respuesta de login.');
           _error = 'Datos de usuario incompletos recibidos. Intente de nuevo.';
           _isAuthenticated = false;
         }
       } else {
-        debugPrint('Advertencia: Token o UserType son null en la respuesta de login.');
         _error = 'Error en la respuesta de autenticación: token o tipo de usuario faltante.';
         _isAuthenticated = false;
       }
 
       notifyListeners();
       _isLoading = false;
-      return _error; // será null si todo fue bien
+      return _error; // null si todo fue bien
     } else {
-      final msg = response.message.toLowerCase();
-
-      if (msg.contains('código inválido')) {
-        return 'El código ingresado no es válido. Verifica e intenta nuevamente.';
-      } else if (msg.contains('código expirado')) {
-        return 'El código ha expirado. Solicita un nuevo código.';
-      } else if (msg.contains('contraseña')) {
-        return 'La contraseña es incorrecta.';
-      } else if (msg.contains('usuario no encontrado')) {
-        return 'El usuario no está registrado.';
-      }
-
-      _error = response.message.isNotEmpty
-          ? response.message
-          : 'Error en la verificación';
+      _error = response.message.isNotEmpty ? response.message : 'Error en la verificación';
       notifyListeners();
       return _error;
     }
   } catch (e) {
-    String errorMessage = e.toString();
-    if (errorMessage.contains('Exception:')) {
-      errorMessage = errorMessage.replaceFirst('Exception:', '').trim();
-    }
-    if (errorMessage.toLowerCase().contains('connection')) {
-      return 'Error de conexión. Verifica tu internet e intenta nuevamente.';
-    } else if (errorMessage.toLowerCase().contains('timeout')) {
-      return 'Tiempo de espera agotado. Intenta nuevamente.';
-    }
-
-    _error = errorMessage.isNotEmpty
-        ? errorMessage
+    _error = e.toString().contains('Exception:')
+        ? e.toString().replaceFirst('Exception:', '').trim()
         : 'Error en la verificación';
     notifyListeners();
     return _error;
@@ -238,13 +213,8 @@ Future<String?> verifyCodeAndLogin(
     _isVerifyingCode = false;
     _isLoading = false;
     notifyListeners();
-    print('isLoading: $_isLoading');
-    print('isAuthenticated: $_isAuthenticated');
-    print('userType: $_userType');
-
   }
 }
-
 
 Future<void> initialize() async {
   _isLoading = true;
@@ -314,18 +284,18 @@ Future<String?> login(String email, String password, String userType) async {
               'contrasena': '',
             };
 
-          if (completeUserData['idUsuario'] == 0) {
-            _error = 'No se pudo obtener idUsuario del servidor.';
-            _isAuthenticated = false;
-            return _error;
-          }
-
+            if (completeUserData['idUsuario'] == 0) {
+              _error = 'No se pudo obtener idUsuario del servidor.';
+              _isAuthenticated = false;
+              return _error;
+            }
 
             _currentUser = Usuario.fromJson(completeUserData);
             _currentClient = null;
             await StorageService.saveUserData(_currentUser!.toJson());
 
           } else if (_userType == Constants.clientType) {
+            // NO toques hashContraseña, deja el que viene del backend
             final completeClientData = Map<String, dynamic>.from(userDataMap);
 
             if (completeClientData['idCliente'] == null) {
@@ -344,30 +314,25 @@ Future<String?> login(String email, String password, String userType) async {
             await StorageService.saveUserData(_currentClient!.toJson());
           }
         } else {
-          debugPrint('Advertencia: El campo "user" es null en la respuesta de login.');
           _error = 'Datos de usuario incompletos recibidos. Intente de nuevo.';
           _isAuthenticated = false;
         }
       } else {
-        debugPrint('Advertencia: Token o UserType son null en la respuesta de login.');
         _error = 'Error en la respuesta de autenticación: token o tipo de usuario faltante.';
         _isAuthenticated = false;
       }
 
       notifyListeners();
-      return _error; // será null si todo fue bien
+      return _error; // null si todo fue bien
     } else {
-      _error = response.message.isNotEmpty ? response.message : Constants.loginError;
+      _error = response.message.isNotEmpty ? response.message : 'Error en login';
       notifyListeners();
       return _error;
     }
   } catch (e) {
     _error = e.toString().contains('Exception:')
         ? e.toString().replaceFirst('Exception:', '').trim()
-        : Constants.loginError;
-    if (kDebugMode) {
-      print('Error en AuthProvider login: $_error');
-    }
+        : 'Error en login';
     notifyListeners();
     return _error;
   } finally {
@@ -375,7 +340,6 @@ Future<String?> login(String email, String password, String userType) async {
     notifyListeners();
   }
 }
-
 
   Future<String?> registerClient(Cliente cliente) async {
     _isLoading = true;
@@ -805,5 +769,6 @@ Future<String?> refreshCurrentClientProfile() async {
     notifyListeners();
   }
 }
+
 
 }

@@ -64,24 +64,27 @@ class Cliente {
   });
 
   factory Cliente.fromJson(Map<String, dynamic> json) {
-    return Cliente(
-      idCliente: json['idCliente'] as int? ?? 0,
-      tipoDocumento: json['tipoDocumento']?.toString() ?? 'CC',
-      numeroDocumento: json['numeroDocumento']?.toString() ?? '',
-      nombre: json['nombre']?.toString() ?? '',
-      apellido: json['apellido']?.toString() ?? '',
-      correo: json['correo']?.toString() ?? '',
-      contrasena: json['hashContraseña']?.toString(), // usa el nombre real de la API
-      direccion: json['direccion']?.toString() ?? '',
-      barrio: json['barrio']?.toString() ?? '',
-      ciudad: json['ciudad']?.toString() ?? '',
-      fechaNacimiento: json['fechaNacimiento'] != null
-          ? _fromJsonFecha(json['fechaNacimiento'].toString())
-          : DateTime.now(),
-      celular: json['celular']?.toString() ?? '',
-      estado: json['estado'] as bool? ?? true,
-    );
-  }
+  final contrasena = json['hashContraseña']?.toString();
+  print('>>> contrasena recibida: $contrasena');
+  return Cliente(
+    idCliente: json['idCliente'] as int? ?? 0,
+    tipoDocumento: json['tipoDocumento']?.toString() ?? 'CC',
+    numeroDocumento: json['numeroDocumento']?.toString() ?? '',
+    nombre: json['nombre']?.toString() ?? '',
+    apellido: json['apellido']?.toString() ?? '',
+    correo: json['correo']?.toString() ?? '',
+    contrasena: contrasena,
+    direccion: json['direccion']?.toString() ?? '',
+    barrio: json['barrio']?.toString() ?? '',
+    ciudad: json['ciudad']?.toString() ?? '',
+    fechaNacimiento: json['fechaNacimiento'] != null
+        ? _fromJsonFecha(json['fechaNacimiento'].toString())
+        : DateTime.now(),
+    celular: json['celular']?.toString() ?? '',
+    estado: json['estado'] as bool? ?? true,
+  );
+}
+
 
   Map<String, dynamic> toJson() => _$ClienteToJson(this);
 

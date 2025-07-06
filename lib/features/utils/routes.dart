@@ -44,22 +44,24 @@ class AppRoutes {
       case verification:
         final args = settings.arguments as Map<String, dynamic>?;
         return MaterialPageRoute(
-          builder: (context) => VerificationScreen(
-            email: args?['email'] ?? '',
-            password: args?['password'],
-            userType: args?['userType'],
-            isPasswordReset: args?['isPasswordReset'] ?? false,
-            isLogin: args?['isLogin'] ?? false,
-          ),
+          builder:
+              (context) => VerificationScreen(
+                email: args?['email'] ?? '',
+                password: args?['password'],
+                userType: args?['userType'],
+                isPasswordReset: args?['isPasswordReset'] ?? false,
+                isLogin: args?['isLogin'] ?? false,
+              ),
         );
 
       case resetPassword:
         final args = settings.arguments as Map<String, dynamic>?;
         return MaterialPageRoute(
-          builder: (context) => ResetPasswordScreen(
-            email: args?['email'] ?? '',
-            verificationCode: args?['verificationCode'] ?? '',
-          ),
+          builder:
+              (context) => ResetPasswordScreen(
+                email: args?['email'] ?? '',
+                verificationCode: args?['verificationCode'] ?? '',
+              ),
         );
 
       default:

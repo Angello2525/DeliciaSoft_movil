@@ -739,6 +739,8 @@ static Future<PasswordResetResponse> resetPassword(
 }
 
 
+
+
   // ==================== REFRESH TOKEN ====================
 
   static Future<AuthResponse> refreshToken(String refreshToken) async {
@@ -981,7 +983,7 @@ static Future<ApiResponse<Usuario>> updateUserProfileAdmin(String token, Usuario
   static Future<ApiResponse<Cliente>> updateClientStatus(String token, int idCliente, bool newStatus) async {
     try {
       final response = await http.put(
-        Uri.parse('$__baseUrl/admin/clients/$idCliente/status'),
+        Uri.parse('$__baseUrl/Clientes/$idCliente'),
         headers: _headersWithToken(token),
       );
       _handleHttpError(response);

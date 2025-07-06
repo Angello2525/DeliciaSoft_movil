@@ -11,32 +11,36 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # UI y Estilos
+  # Utilidades y JSON
+  intl: ^0.18.1
+  json_annotation: ^4.8.1
+
+  # Estado y preferencias
+  provider: ^6.0.5
+  shared_preferences: ^2.2.2
+
+  # UI y estilos
   cupertino_icons: ^1.0.2
   google_fonts: ^6.1.0
   flutter_spinkit: ^5.2.0
   fluttertoast: ^8.2.4
 
-  # Red e Internet
+  # Red e internet
   http: ^1.1.0
   connectivity_plus: ^5.0.2
 
-  # Formularios y Validación
+  # Formularios y validación
   form_field_validator: ^1.1.0
   email_validator: ^2.1.17
-
-  # Almacenamiento y estado
-  shared_preferences: ^2.2.2
-  provider: ^6.0.5
 
   # Manejo de imágenes
   image_picker: ^1.1.1
 
-  # Fechas
-  intl: ^0.18.1
-
-  # JSON
-  json_annotation: ^4.8.1
+  # Google Maps y geolocalización
+  google_maps_flutter: ^2.5.0
+  geocoding: ^2.1.0
+  geolocator: ^10.1.0
+  google_places_flutter: ^2.0.8
 
 dev_dependencies:
   flutter_test:
