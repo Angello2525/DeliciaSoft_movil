@@ -58,10 +58,10 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen>
 
   Future<void> _sendVerificationCode() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final userEmail = authProvider.currentUser?.correo;
-    final userType = authProvider.userType?.toLowerCase(); 
+    final userEmail = authProvider.currentUser?.correo ?? authProvider.currentClient?.correo;
+    final userType = authProvider.userType; // NO convertir a lowercase aquí
 
-    if (userEmail == null) {
+    if (userEmail == null || userType == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -70,7 +70,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen>
                 Icon(Icons.error_outline, color: Colors.white),
                 SizedBox(width: 12),
                 Expanded(
-                  child: Text('Error: No se pudo obtener el correo del usuario.'),
+                  child: Text('Error: No se pudo obtener los datos del usuario.'),
                 ),
               ],
             ),
@@ -86,7 +86,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen>
       return;
     }
 
-    print('🔄 Enviando código de verificación para cambio de contraseña a: $userEmail');
+    print('🔄 Enviando código de verificación para cambio de contraseña');
+    print('📧 Email: $userEmail');
+    print('👤 UserType: $userType');
 
     // Simular un pequeño delay para mejor UX
     await Future.delayed(const Duration(milliseconds: 1500));
@@ -132,7 +134,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen>
             'email': userEmail,
             'isPasswordReset': true,
             'isChangePassword': true,
-            'userType': userType,
+            'userType': userType, // Usar el userType original sin modificar
           },
         );
       }
@@ -163,7 +165,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen>
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
-    final userEmail = authProvider.currentUser?.correo ?? '';
+    final userEmail = authProvider.currentUser?.correo ?? authProvider.currentClient?.correo ?? '';
 
     return Scaffold(
       backgroundColor: Colors.pink[50],

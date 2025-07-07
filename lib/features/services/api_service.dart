@@ -401,49 +401,96 @@ static Future<ApiResponse<dynamic>> verifyCodeAndLogin(String email, String pass
   }
 }
 
-  // VERIFICAR SI USUARIO EXISTE Y OBTENER TIPO
  static Future<ApiResponse<String>> checkUserExists(String email) async {
   try {
-    // Primero verificar en usuarios (admin)
-    final userResponse = await http.get(
-      Uri.parse('${Constants.getUserEndpoint}?correo=$email'),
-      headers: _headers,
-    );
+    print('🔍 Verificando usuario con email: $email');
     
-    if (userResponse.statusCode == 200) {
-      final userData = jsonDecode(userResponse.body);
-      if (userData != null && userData.isNotEmpty) {
-        return ApiResponse<String>(
-          success: true,
-          message: 'Usuario encontrado',
-          data: Constants.adminType, // admin
-        );
-      }
-    }
-    
-    // Luego verificar en clientes
+    // Primero verificar en clientes (más común)
     final clientResponse = await http.get(
       Uri.parse('${Constants.getClientEndpoint}?correo=$email'),
       headers: _headers,
     );
     
+    print('🔍 Cliente response status: ${clientResponse.statusCode}');
+    print('🔍 Cliente response body: ${clientResponse.body}');
+    
     if (clientResponse.statusCode == 200) {
       final clientData = jsonDecode(clientResponse.body);
-      if (clientData != null && clientData.isNotEmpty) {
-        return ApiResponse<String>(
-          success: true,
-          message: 'Usuario encontrado',
-          data: Constants.clientType, // cliente
-        );
+      
+      // Verificar si hay datos
+      if (clientData != null) {
+        // Si es una lista, verificar que no esté vacía
+        if (clientData is List && clientData.isNotEmpty) {
+          // Buscar el cliente específico por email
+          final clientFound = clientData.any((client) => client['correo'] == email);
+          if (clientFound) {
+            print('✅ Cliente encontrado en lista');
+            return ApiResponse<String>(
+              success: true,
+              message: 'Usuario encontrado',
+              data: Constants.clientType,
+            );
+          }
+        }
+        // Si es un objeto (mapa), verificar directamente
+        else if (clientData is Map && clientData['correo'] == email) {
+          print('✅ Cliente encontrado como objeto');
+          return ApiResponse<String>(
+            success: true,
+            message: 'Usuario encontrado',
+            data: Constants.clientType,
+          );
+        }
       }
     }
     
+    // Luego verificar en usuarios (admin)
+    final userResponse = await http.get(
+      Uri.parse('${Constants.getUserEndpoint}?correo=$email'),
+      headers: _headers,
+    );
+    
+    print('🔍 Usuario response status: ${userResponse.statusCode}');
+    print('🔍 Usuario response body: ${userResponse.body}');
+    
+    if (userResponse.statusCode == 200) {
+      final userData = jsonDecode(userResponse.body);
+      
+      // Verificar si hay datos
+      if (userData != null) {
+        // Si es una lista, verificar que no esté vacía
+        if (userData is List && userData.isNotEmpty) {
+          // Buscar el usuario específico por email
+          final userFound = userData.any((user) => user['correo'] == email);
+          if (userFound) {
+            print('✅ Usuario admin encontrado en lista');
+            return ApiResponse<String>(
+              success: true,
+              message: 'Usuario encontrado',
+              data: Constants.adminType,
+            );
+          }
+        }
+        // Si es un objeto (mapa), verificar directamente
+        else if (userData is Map && userData['correo'] == email) {
+          print('✅ Usuario admin encontrado como objeto');
+          return ApiResponse<String>(
+            success: true,
+            message: 'Usuario encontrado',
+            data: Constants.adminType,
+          );
+        }
+      }
+    }
+    
+    print('❌ Usuario no encontrado en ninguna tabla');
     return ApiResponse<String>(
       success: false,
       message: 'Usuario no encontrado',
       data: null,
     );
   } catch (e) {
+    print('❌ Error verificando usuario: $e');
     throw Exception('Error verificando usuario: $e');
   }
 }
@@ -1087,6 +1134,7 @@ static Future<ApiResponse<Usuario>> getCurrentAdminProfile(String token, String 
     );
   }
 }
+
   static Future<List<Pedido>> getPedidos() async {
     final response = await http.get(Uri.parse('$__baseUrl/Pedidoes'));
 
