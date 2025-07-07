@@ -1,3 +1,4 @@
+// pedido_list_screen.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../models/venta/pedido.dart';
@@ -7,11 +8,12 @@ import '../../../models/venta/venta.dart';
 import '../../../models/cliente.dart';
 import '../../../models/venta/sede.dart';
 import '../../../models/venta/detalle_adicione.dart';
+import '../../../models/venta/abono.dart'; // Import Abono model
 import '../../../services/api_service.dart';
 import '../../../models/venta/catalogo_adicione.dart';
 import '../../../models/venta/catalogo_sabor.dart';
 import '../../../models/venta/catalogo_relleno.dart';
-import 'abono_list_modal.dart'; 
+import 'abono_list_modal.dart';
 
 class PedidoListScreen extends StatefulWidget {
   const PedidoListScreen({super.key});
@@ -27,13 +29,14 @@ class _PedidoListScreenState extends State<PedidoListScreen> {
   String _searchQuery = '';
   Set<int> _canceledPedidoIds = {};
 
-  // Define your refined color palette
+  // Define your refined color palette for a relaxing feel
   static const Color _primaryRose = Color.fromRGBO(228, 48, 84, 1);
   static const Color _darkGrey = Color(0xFF333333);
-  static const Color _lightGrey = Color(0xFFF5F5F5); // For main background
-  static const Color _mediumGrey = Color(0xFFE0E0E0); // For borders and dividers
-  static const Color _textGrey = Color(0xFF555555); // For general text
-  static const Color _accentYellow = Colors.amber; // Minimal yellow, can be adjusted further if needed
+  static const Color _lightGrey = Color(0xFFF0F2F5); // Softer, light background
+  static const Color _mediumGrey = Color(0xFFD3DCE5); // For borders and dividers, slightly bluish
+  static const Color _textGrey = Color(0xFF6B7A8C); // For general text, softer than black
+  static const Color _accentGreen = Color(0xFF6EC67F); // Softer green for positive
+  static const Color _accentRed = Color(0xFFE57373); // Softer red for warnings/cancel
 
   @override
   void initState() {
@@ -109,19 +112,24 @@ class _PedidoListScreenState extends State<PedidoListScreen> {
               onPressed: () {
                 Navigator.of(context).pop(); // Dismiss dialog
               },
-              child: const Text('No', style: TextStyle(color: _primaryRose)),
+              child: const Text('No', style: TextStyle(color: _textGrey)),
+              style: TextButton.styleFrom(foregroundColor: _primaryRose),
             ),
-            TextButton(
+            ElevatedButton(
               onPressed: () {
                 setState(() {
                   _canceledPedidoIds.add(pedidoId); // Add to canceled set
                 });
                 Navigator.of(context).pop(); // Dismiss dialog
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Pedido Nro $pedidoId anulado.', style: const TextStyle(color: Colors.white))),
+                  SnackBar(
+                    content: Text('Pedido Nro $pedidoId anulado.', style: const TextStyle(color: Colors.white)),
+                    backgroundColor: _accentRed,
+                  ),
                 );
               },
-              child: const Text('Sí', style: TextStyle(color: Colors.red)),
+              style: ElevatedButton.styleFrom(backgroundColor: _accentRed),
+              child: const Text('Sí', style: TextStyle(color: Colors.white)),
             ),
           ],
         );
@@ -130,13 +138,16 @@ class _PedidoListScreenState extends State<PedidoListScreen> {
   }
 
   // New method to show Abonos modal
-  void _showAbonosModal(int idPedido) {
+  void _showAbonosModal(int idPedido, double totalPedido) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AbonoListModal(idPedido: idPedido);
+        return AbonoListModal(idPedido: idPedido, totalPedido: totalPedido); // Corrected: Pass totalPedido
       },
-    );
+    ).then((_) {
+      // Reload pedidos when the abonos modal is closed to refresh balance
+      _reloadPedidos();
+    });
   }
 
   void _showErrorDialog(String message) {
@@ -168,7 +179,7 @@ class _PedidoListScreenState extends State<PedidoListScreen> {
     }
 
     return FutureBuilder<Map<String, dynamic>>(
-      future: _fetchFullPedidoDetails(pedido.idVenta!),
+      future: _fetchFullPedidoAndAbonosDetails(pedido.idVenta!, pedido.idPedido!), // Pass idPedido
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Padding(
@@ -178,7 +189,7 @@ class _PedidoListScreenState extends State<PedidoListScreen> {
         } else if (snapshot.hasError) {
           return Padding(
             padding: const EdgeInsets.all(16.0),
-            child: Text('Error al cargar detalles adicionales: ${snapshot.error}', style: const TextStyle(color: Colors.red)),
+            child: Text('Error al cargar detalles adicionales: ${snapshot.error}', style: const TextStyle(color: _accentRed)),
           );
         } else if (!snapshot.hasData) {
           return const Padding(
@@ -190,6 +201,25 @@ class _PedidoListScreenState extends State<PedidoListScreen> {
           final List<DetalleVenta> detallesVenta = snapshot.data!['detallesVenta'];
           final Cliente? cliente = snapshot.data!['cliente'];
           final Sede? sede = snapshot.data!['sede'];
+          final List<Abono> abonos = snapshot.data!['abonos']; // Get abonos
+
+          // Calculate total from all detalleVenta items
+          double totalVentaDetails = 0.0;
+          for (var detalle in detallesVenta) {
+            totalVentaDetails += detalle.total ?? 0.0;
+          }
+
+          // Calculate sum of abonos
+          double sumAbonos = 0.0;
+          for (var abono in abonos) {
+            sumAbonos += abono.cantidadPagar ?? 0.0;
+          }
+
+          // Calculate remaining balance and ensure it does not go below zero
+          double remainingBalance = totalVentaDetails - sumAbonos;
+          if (remainingBalance < 0) {
+            remainingBalance = 0;
+          }
 
           return Padding(
             padding: const EdgeInsets.all(16.0),
@@ -208,7 +238,7 @@ class _PedidoListScreenState extends State<PedidoListScreen> {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: _primaryRose, // Use the new primary rose
+                    color: _primaryRose,
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -222,6 +252,40 @@ class _PedidoListScreenState extends State<PedidoListScreen> {
                 _buildInfoRow('Observaciones del Pedido', pedido.observaciones.isEmpty ? 'N/A' : pedido.observaciones),
                 _buildInfoRow('Mensaje Personalizado', pedido.mensajePersonalizado.isEmpty ? 'N/A' : pedido.mensajePersonalizado),
                 _buildInfoRow('Fecha de Entrega del Pedido', DateFormat('dd/MM/yyyy HH:mm').format(pedido.fechaEntrega)),
+                // Displaying the financial summary
+                const SizedBox(height: 10),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        'Total General: \$${totalVentaDetails.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: _primaryRose,
+                        ),
+                      ),
+                      Text(
+                        'Total Pagado (Abonos): \$${sumAbonos.toStringAsFixed(2)}',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: _accentGreen,
+                        ),
+                      ),
+                      Text(
+                        'Saldo Pendiente: \$${remainingBalance.toStringAsFixed(2)}',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: remainingBalance > 0 ? _accentRed : _accentGreen,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 const SizedBox(height: 20),
                 // Buttons Row
                 Row(
@@ -232,11 +296,11 @@ class _PedidoListScreenState extends State<PedidoListScreen> {
                       Padding(
                         padding: const EdgeInsets.only(right: 10.0),
                         child: ElevatedButton.icon(
-                          onPressed: () => _showAbonosModal(pedido.idPedido!),
+                          onPressed: () => _showAbonosModal(pedido.idPedido!, totalVentaDetails),
                           icon: const Icon(Icons.account_balance_wallet, color: Colors.white),
                           label: const Text('Abonos', style: TextStyle(color: Colors.white)),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue, // Abonos button color
+                            backgroundColor: Colors.blueAccent.shade400, // A calming blue for abonos
                             padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           ),
@@ -249,7 +313,7 @@ class _PedidoListScreenState extends State<PedidoListScreen> {
                         icon: const Icon(Icons.cancel, color: Colors.white),
                         label: const Text('Anular Pedido', style: TextStyle(color: Colors.white)),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red, // Button color
+                          backgroundColor: _accentRed,
                           padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         ),
@@ -264,7 +328,7 @@ class _PedidoListScreenState extends State<PedidoListScreen> {
                       child: Text(
                         'Pedido Anulado',
                         style: TextStyle(
-                          color: Colors.red.shade700,
+                          color: _accentRed,
                           fontWeight: FontWeight.bold,
                           fontSize: 18,
                         ),
@@ -291,14 +355,14 @@ class _PedidoListScreenState extends State<PedidoListScreen> {
             leading: CircularProgressIndicator(color: _primaryRose, strokeWidth: 2),
           );
         } else if (productSnapshot.hasError) {
-          return ListTile(title: Text('Error al cargar producto: ${productSnapshot.error}', style: const TextStyle(color: Colors.red)));
+          return ListTile(title: Text('Error al cargar producto: ${productSnapshot.error}', style: const TextStyle(color: _accentRed)));
         } else {
           final productoGeneral = productSnapshot.data;
           return Card(
             margin: const EdgeInsets.symmetric(vertical: 8.0),
             elevation: 2,
-            color: _lightGrey, // Slightly darker grey for inner cards
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            color: Colors.white, // White for inner cards
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), // More rounded
             child: ExpansionTile(
               tilePadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
               title: Text(
@@ -328,7 +392,7 @@ class _PedidoListScreenState extends State<PedidoListScreen> {
                             } else if (adicionesSnapshot.hasError) {
                               return Padding(
                                 padding: const EdgeInsets.only(left: 8.0, top: 4.0),
-                                child: Text('  Error al cargar adiciones: ${adicionesSnapshot.error}', style: const TextStyle(color: Colors.red)),
+                                child: Text('  Error al cargar adiciones: ${adicionesSnapshot.error}', style: const TextStyle(color: _accentRed)),
                               );
                             } else if (!adicionesSnapshot.hasData || adicionesSnapshot.data!.isEmpty) {
                               return const Padding(
@@ -344,7 +408,7 @@ class _PedidoListScreenState extends State<PedidoListScreen> {
                                     style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.bold,
-                                      color: _primaryRose, // Use rose for sub-titles
+                                      color: _primaryRose,
                                     ),
                                   ),
                                   const SizedBox(height: 8.0),
@@ -359,7 +423,7 @@ class _PedidoListScreenState extends State<PedidoListScreen> {
                                           } else if (namesSnapshot.hasError) {
                                             return Padding(
                                               padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
-                                              child: Text('  Error al cargar nombres: ${namesSnapshot.error}', style: const TextStyle(color: Colors.red)),
+                                              child: Text('  Error al cargar nombres: ${namesSnapshot.error}', style: const TextStyle(color: _accentRed)),
                                             );
                                           } else {
                                             final names = namesSnapshot.data!;
@@ -433,10 +497,11 @@ class _PedidoListScreenState extends State<PedidoListScreen> {
     };
   }
 
-  Future<Map<String, dynamic>> _fetchFullPedidoDetails(int idVenta) async {
+  Future<Map<String, dynamic>> _fetchFullPedidoAndAbonosDetails(int idVenta, int idPedido) async {
     try {
       final Venta venta = await ApiService.getVentaById(idVenta);
       final List<DetalleVenta> detallesVenta = await ApiService.getDetalleVentaByVentaId(idVenta);
+      final List<Abono> abonos = await ApiService.getAbonosByPedidoId(idPedido); // Fetch abonos here
 
       Cliente? cliente;
       Sede? sede;
@@ -453,6 +518,7 @@ class _PedidoListScreenState extends State<PedidoListScreen> {
         'detallesVenta': detallesVenta,
         'cliente': cliente,
         'sede': sede,
+        'abonos': abonos, // Include abonos in the returned map
       };
     } catch (e) {
       throw Exception('Failed to load full pedido details: $e');
@@ -481,141 +547,159 @@ class _PedidoListScreenState extends State<PedidoListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _lightGrey, // Overall background color
-      appBar: AppBar(
-        title: const Text('Lista de Pedidos', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        backgroundColor: _primaryRose, // Use the new primary rose
-        elevation: 0, // No shadow for a flatter look
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.white),
-            onPressed: _reloadPedidos,
-            tooltip: 'Recargar Pedidos',
-          ),
-        ],
-      ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Gestión de Pedidos',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: _darkGrey, // Main title color
+      body: CustomScrollView(
+        slivers: [
+         SliverAppBar(
+            expandedHeight: 180.0,
+            floating: false,
+            pinned: true,
+            backgroundColor: _primaryRose,
+            flexibleSpace: FlexibleSpaceBar(
+              centerTitle: false,
+              titlePadding: const EdgeInsets.only(left: 20, bottom: 60), // Increased bottom padding
+              title: const Text(
+                'Pedidos',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 24,
+                ),
+              ),
+              background: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [_primaryRose, _primaryRose.withOpacity(0.8)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
                 ),
-                const SizedBox(height: 15),
-                TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    labelText: 'Buscar por Nro. Pedido, Cliente o Fecha de Entrega',
-                    labelStyle: const TextStyle(color: _textGrey),
-                    hintText: 'Ej. 123, Juan Pérez, 30/06/2025',
-                    hintStyle: const TextStyle(color: _mediumGrey),
-                    prefixIcon: const Icon(Icons.search, color: _primaryRose), // Rose search icon
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10.0),
-                      borderSide: const BorderSide(color: _mediumGrey),
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 10), // This padding is fine for the TextField within its Align
+                    child: TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        labelText: 'Buscar pedidos...',
+                        labelStyle: TextStyle(color: Colors.white.withOpacity(0.8)),
+                        hintText: 'Nro. Pedido, Cliente o Fecha',
+                        hintStyle: TextStyle(color: Colors.white.withOpacity(0.6)),
+                        prefixIcon: const Icon(Icons.search, color: Colors.white),
+                        filled: true,
+                        fillColor: Colors.white.withOpacity(0.2),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10.0),
+                          borderSide: BorderSide.none,
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10.0),
+                          borderSide: const BorderSide(color: Colors.white, width: 1.5),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10.0),
+                          borderSide: BorderSide.none,
+                        ),
+                        suffixIcon: _searchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear, color: Colors.white),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  _onSearchChanged();
+                                },
+                              )
+                            : null,
+                      ),
+                      style: const TextStyle(color: Colors.white),
                     ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10.0),
-                      borderSide: const BorderSide(color: _primaryRose, width: 2.0), // Rose border on focus
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10.0),
-                      borderSide: const BorderSide(color: _mediumGrey),
-                    ),
-                    suffixIcon: _searchQuery.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear, color: _textGrey),
-                            onPressed: () {
-                              _searchController.clear();
-                              _onSearchChanged();
-                            },
-                          )
-                        : null,
                   ),
-                  style: const TextStyle(color: _darkGrey),
                 ),
-              ],
+              ),
             ),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.refresh, color: Colors.white),
+                onPressed: _reloadPedidos,
+                tooltip: 'Recargar Pedidos',
+              ),
+            ],
           ),
-          Expanded(
-            child: FutureBuilder<List<Map<String, dynamic>>>(
-              future: _pedidosWithClientFuture,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator(color: _primaryRose));
-                } else if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.red)));
-                } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return const Center(child: Text('No hay pedidos disponibles.', style: TextStyle(color: _textGrey)));
-                } else {
-                  final filteredPedidos = snapshot.data!.where((pedidoData) {
-                    final Pedido pedido = pedidoData['pedido'];
-                    final String clientName = pedidoData['clientName'].toLowerCase();
-                    final String query = _searchQuery.toLowerCase();
+          FutureBuilder<List<Map<String, dynamic>>>(
+            future: _pedidosWithClientFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const SliverFillRemaining(
+                  child: Center(child: CircularProgressIndicator(color: _primaryRose)),
+                );
+              } else if (snapshot.hasError) {
+                return SliverFillRemaining(
+                  child: Center(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: _accentRed))),
+                );
+              } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                return const SliverFillRemaining(
+                  child: Center(child: Text('No hay pedidos disponibles.', style: TextStyle(color: _textGrey))),
+                );
+              } else {
+                final filteredPedidos = snapshot.data!.where((pedidoData) {
+                  final Pedido pedido = pedidoData['pedido'];
+                  final String clientName = pedidoData['clientName'].toLowerCase();
+                  final String query = _searchQuery.toLowerCase();
 
-                    // Search by Pedido ID
-                    if (pedido.idPedido != null && pedido.idPedido.toString().contains(query)) {
-                      return true;
-                    }
-                    // Search by Client Name
-                    if (clientName.contains(query)) {
-                      return true;
-                    }
-                    // Search by Delivery Date (formatted as dd/MM/yyyy)
-                    final String formattedDate = DateFormat('dd/MM/yyyy').format(pedido.fechaEntrega);
-                    if (formattedDate.contains(query)) {
-                      return true;
-                    }
-
-                    return false;
-                  }).toList();
-
-                  if (filteredPedidos.isEmpty) {
-                    return const Center(child: Text('No se encontraron pedidos que coincidan con la búsqueda.', style: TextStyle(color: _textGrey)));
+                  // Search by Pedido ID
+                  if (pedido.idPedido != null && pedido.idPedido.toString().contains(query)) {
+                    return true;
+                  }
+                  // Search by Client Name
+                  if (clientName.contains(query)) {
+                    return true;
+                  }
+                  // Search by Delivery Date (formatted as dd/MM/yyyy)
+                  final String formattedDate = DateFormat('dd/MM/yyyy').format(pedido.fechaEntrega);
+                  if (formattedDate.contains(query)) {
+                    return true;
                   }
 
-                  return ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 15.0),
-                    itemCount: filteredPedidos.length,
-                    itemBuilder: (context, index) {
+                  return false;
+                }).toList();
+
+                if (filteredPedidos.isEmpty) {
+                  return const SliverFillRemaining(
+                    child: Center(child: Text('No se encontraron pedidos que coincidan con la búsqueda.', style: TextStyle(color: _textGrey))),
+                  );
+                }
+
+                return SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
                       final pedidoData = filteredPedidos[index];
                       final Pedido pedido = pedidoData['pedido'];
                       final String clientName = pedidoData['clientName'];
                       final bool isExpanded = _expandedPedidoId == pedido.idPedido;
-                      final double opacity = _canceledPedidoIds.contains(pedido.idPedido) ? 0.6 : 1.0; // Slightly more visible for canceled
+                      final double opacity = _canceledPedidoIds.contains(pedido.idPedido) ? 0.6 : 1.0;
 
                       return Opacity(
                         opacity: opacity,
                         child: Card(
-                          margin: const EdgeInsets.symmetric(vertical: 8),
-                          color: Colors.white, // White card background
-                          elevation: 3, // Subtle shadow
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 15),
+                          color: Colors.white,
+                          elevation: 4,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           child: Column(
                             children: [
                               ListTile(
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
                                 title: Text(
                                   'Pedido Nro: ${pedido.idPedido}',
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: _darkGrey),
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: _darkGrey),
                                 ),
                                 subtitle: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const SizedBox(height: 4),
-                                    Text('Cliente: $clientName', style: const TextStyle(fontSize: 14, color: _textGrey)),
-                                    Text('Entrega: ${DateFormat('dd/MM/yyyy HH:mm').format(pedido.fechaEntrega)}', style: const TextStyle(fontSize: 14, color: _textGrey)),
+                                    const SizedBox(height: 6),
+                                    Text('Cliente: $clientName', style: const TextStyle(fontSize: 15, color: _textGrey)),
+                                    Text('Entrega: ${DateFormat('dd/MM/yyyy HH:mm').format(pedido.fechaEntrega)}', style: const TextStyle(fontSize: 15, color: _textGrey)),
                                   ],
                                 ),
-                                trailing: Icon(isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down, color: _primaryRose), // Rose arrow icon
+                                trailing: Icon(isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down, color: _primaryRose, size: 28),
                                 onTap: () {
                                   setState(() {
                                     if (isExpanded) {
@@ -632,10 +716,11 @@ class _PedidoListScreenState extends State<PedidoListScreen> {
                         ),
                       );
                     },
-                  );
-                }
-              },
-            ),
+                    childCount: filteredPedidos.length,
+                  ),
+                );
+              }
+            },
           ),
         ],
       ),

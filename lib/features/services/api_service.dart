@@ -18,6 +18,8 @@ import '../models/venta/sede.dart';
 import '../models/venta/venta.dart';
 import '../models/venta/imagene.dart';
 import 'package:image_picker/image_picker.dart'; 
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 
 
 class ApiService {
@@ -1295,26 +1297,42 @@ static Future<ApiResponse<Usuario>> getCurrentAdminProfile(String token, String 
     }
   }
 
-  static Future<Imagene> uploadImage(XFile imageFile) async {
-    final uri = Uri.parse('$__baseUrl/Imagenes/subir');
-    var request = http.MultipartRequest('POST', uri);
-    request.files.add(await http.MultipartFile.fromPath(
-      'archivo', // Este debe coincidir con el nombre del parámetro en tu API C# ([FromForm] IFormFile archivo)
-      imageFile.path,
-      filename: imageFile.name,
-    ));
+ static Future<Imagene> uploadImage(XFile imageFile) async {
+  final uri = Uri.parse('$__baseUrl/Imagenes/subir');
+  var request = http.MultipartRequest('POST', uri);
 
-    var response = await request.send();
-
-    if (response.statusCode == 201) { // 201 Created es el código que devuelve tu API
-      final responseBody = await response.stream.bytesToString();
-      final Map<String, dynamic> jsonResponse = json.decode(responseBody);
-      return Imagene.fromJson(jsonResponse); // Deserializa el objeto Imagene completo
-    } else {
-      final errorBody = await response.stream.bytesToString();
-      throw Exception('Failed to upload image: ${response.statusCode} - $errorBody');
-    }
+  if (kIsWeb) {
+    // En web, leemos los bytes y los mandamos como MultipartFile.fromBytes
+    Uint8List bytes = await imageFile.readAsBytes();
+    request.files.add(
+      http.MultipartFile.fromBytes(
+        'archivo', // debe coincidir con el nombre del parámetro en tu API
+        bytes,
+        filename: imageFile.name,
+      ),
+    );
+  } else {
+    // En móvil o escritorio, usamos fromPath
+    request.files.add(
+      await http.MultipartFile.fromPath(
+        'archivo',
+        imageFile.path,
+        filename: imageFile.name,
+      ),
+    );
   }
+
+  var response = await request.send();
+
+  if (response.statusCode == 201) {
+    final responseBody = await response.stream.bytesToString();
+    final Map<String, dynamic> jsonResponse = json.decode(responseBody);
+    return Imagene.fromJson(jsonResponse);
+  } else {
+    final errorBody = await response.stream.bytesToString();
+    throw Exception('Failed to upload image: ${response.statusCode} - $errorBody');
+  }
+}
 
   static Future<List<Abono>> getAbonosByPedidoId(int idPedido) async {
     final response = await http.get(Uri.parse('$__baseUrl/Abonos/ByPedido/$idPedido'));
@@ -1366,4 +1384,3 @@ static Future<ApiResponse<Usuario>> getCurrentAdminProfile(String token, String 
   }
   
 }
-
