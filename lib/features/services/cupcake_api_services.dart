@@ -44,7 +44,7 @@ class ProductoApiService {
         
         // Filtrar productos de categoría 3 (fresas con crema)
         List<dynamic> productosCategoria3 = jsonData
-            .where((producto) => producto['idCategoriaProducto'] == 8 )
+            .where((producto) => producto['idCategoriaProducto'] == 9 )
             .toList();
 
         print('Productos de categoría 3 (cupcakes): ${productosCategoria3.length}');
@@ -183,7 +183,7 @@ class ProductoApiService {
         print('Total productos recibidos: ${productosData.length}');
         
         List<dynamic> productosCategoria3 = productosData
-    .where((producto) => int.tryParse(producto['idCategoriaProducto'].toString()) == 8)
+    .where((producto) => int.tryParse(producto['idCategoriaProducto'].toString()) == 9)
     .toList();
 
         
