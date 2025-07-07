@@ -1320,7 +1320,21 @@ static Future<ApiResponse<Usuario>> getCurrentAdminProfile(String token, String 
         filename: imageFile.name,
       ),
     );
+
   }
+
+  var response = await request.send();
+
+  if (response.statusCode == 201) {
+    final responseBody = await response.stream.bytesToString();
+    final Map<String, dynamic> jsonResponse = json.decode(responseBody);
+    return Imagene.fromJson(jsonResponse);
+  } else {
+    final errorBody = await response.stream.bytesToString();
+    throw Exception('Failed to upload image: ${response.statusCode} - $errorBody');
+ 
+  }
+}
 
   var response = await request.send();
 
@@ -1453,4 +1467,3 @@ static Future<DetalleVenta> createDetalleVenta(DetalleVenta detalleVenta) async 
 
   
 }
-

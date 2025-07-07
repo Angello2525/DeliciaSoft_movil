@@ -1,11 +1,15 @@
+// abono_list_modal.dart
 import 'package:flutter/material.dart';
 import '../../../models/venta/abono.dart';
 import '../../../services/api_service.dart';
-import 'abono_form_screen.dart';  
+import 'abono_form_screen.dart';
+import 'package:intl/intl.dart'; // Import for date formatting
+
 class AbonoListModal extends StatefulWidget {
   final int idPedido;
+  final double totalPedido; // Add totalPedido here
 
-  const AbonoListModal({super.key, required this.idPedido});
+  const AbonoListModal({super.key, required this.idPedido, required this.totalPedido}); // Update constructor
 
   @override
   State<AbonoListModal> createState() => _AbonoListModalState();
@@ -13,18 +17,27 @@ class AbonoListModal extends StatefulWidget {
 
 class _AbonoListModalState extends State<AbonoListModal> {
   late Future<List<Abono>> _abonosFuture;
+  late Future<double> _totalAbonadoFuture;
+
+  // Define your refined color palette for a relaxing feel
+  static const Color _primaryRose = Color.fromRGBO(228, 48, 84, 1);
+  static const Color _darkGrey = Color(0xFF333333);
+  static const Color _lightGrey = Color(0xFFF0F2F5); // Softer, light background
+  static const Color _textGrey = Color(0xFF6B7A8C); // For general text, softer than black
+  static const Color _accentGreen = Color(0xFF6EC67F); // Softer green for positive
+  static const Color _accentRed = Color(0xFFE57373); // Softer red for warnings/cancel
 
   @override
   void initState() {
     super.initState();
     _abonosFuture = _fetchAbonos();
+    _totalAbonadoFuture = _calculateTotalAbonado();
   }
 
   Future<List<Abono>> _fetchAbonos() async {
     try {
       return await ApiService.getAbonosByPedidoId(widget.idPedido);
     } catch (e) {
-      // Ensure the context is still valid before showing dialog
       if (mounted) {
         _showErrorDialog('Error al cargar abonos: $e');
       }
@@ -32,103 +45,117 @@ class _AbonoListModalState extends State<AbonoListModal> {
     }
   }
 
+  Future<double> _calculateTotalAbonado() async {
+    try {
+      final abonos = await ApiService.getAbonosByPedidoId(widget.idPedido);
+      double sum = 0.0;
+      for (var abono in abonos) {
+        sum += abono.cantidadPagar ?? 0.0;
+      }
+      return sum;
+    } catch (e) {
+      print('Error calculating total abonos: $e');
+      return 0.0;
+    }
+  }
+
   void _reloadAbonos() {
-    // Only reload if the widget is still mounted
     if (mounted) {
       setState(() {
         _abonosFuture = _fetchAbonos();
+        _totalAbonadoFuture = _calculateTotalAbonado(); // Recalculate sum
       });
     }
   }
 
   void _showErrorDialog(String message) {
-    // Only show dialog if the context is still valid
-    if (mounted) {
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: const Text('Error', style: TextStyle(color: Colors.black)),
-            content: Text(message, style: const TextStyle(color: Colors.black)),
-            actions: <Widget>[
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: const Text('OK', style: TextStyle(color: Colors.pink)),
-              ),
-            ],
-          );
-        },
-      );
-    }
-  }
-
-  void _addAbono() async {
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) => AbonoFormScreen(idPedido: widget.idPedido),
-    );
-    // Ensure the context is still valid before reloading
-    if (mounted && result == true) {
-      _reloadAbonos(); // Reload abonos if a new one was added successfully
-    }
-  }
-
-  void _editAbono(Abono abono) async {
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) => AbonoFormScreen(idPedido: widget.idPedido, abono: abono),
-    );
-    // Ensure the context is still valid before reloading
-    if (mounted && result == true) {
-      _reloadAbonos(); // Reload abonos if an abono was updated successfully
-    }
-  }
-
-  void _deleteAbono(int idAbono) async {
-    // Store context reference before the async gap in case the dialog pops
-    final currentContext = context; 
-
     showDialog(
-      context: currentContext, // Use the stored context
-      builder: (BuildContext dialogContext) { // Use dialogContext for actions within this dialog
+      context: context,
+      builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Confirmar Eliminación', style: TextStyle(color: Colors.black)),
-          content: Text('¿Está seguro que desea eliminar este abono (ID: $idAbono)?', style: const TextStyle(color: Colors.black)),
+          title: const Text('Error', style: TextStyle(color: _darkGrey)),
+          content: Text(message, style: const TextStyle(color: _textGrey)),
           actions: <Widget>[
             TextButton(
               onPressed: () {
-                Navigator.of(dialogContext).pop(); // Use dialogContext to pop this dialog
+                Navigator.of(context).pop();
               },
-              child: const Text('No', style: TextStyle(color: Colors.black)),
+              child: const Text('OK', style: TextStyle(color: _primaryRose)),
             ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _addAbono() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AbonoFormScreen(
+          idPedido: widget.idPedido,
+          totalPedido: widget.totalPedido,
+        );
+      },
+    ).then((result) {
+      if (result == true) {
+        _reloadAbonos();
+      }
+    });
+  }
+
+  void _editAbono(Abono abono) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AbonoFormScreen(
+          idPedido: widget.idPedido,
+          abono: abono,
+          totalPedido: widget.totalPedido,
+        );
+      },
+    ).then((result) {
+      if (result == true) {
+        _reloadAbonos();
+      }
+    });
+  }
+
+  void _deleteAbono(int idAbono) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Confirmar Eliminación', style: TextStyle(color: _darkGrey)),
+          content: const Text('¿Está seguro que desea eliminar este abono?', style: TextStyle(color: _textGrey)),
+          actions: <Widget>[
             TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('No', style: TextStyle(color: _textGrey)),
+              style: TextButton.styleFrom(foregroundColor: _primaryRose),
+            ),
+            ElevatedButton(
               onPressed: () async {
-                Navigator.of(dialogContext).pop(); // Close confirmation dialog FIRST using dialogContext
-                
                 try {
                   await ApiService.deleteAbono(idAbono);
-                  // Check if the main widget is still mounted before showing SnackBar or reloading
                   if (mounted) {
-                    // Use the context of the Scaffold directly inside the Dialog
-                    ScaffoldMessenger.of(currentContext).showSnackBar( 
-                      const SnackBar(
-                        content: Text('Abono eliminado exitosamente!', style: TextStyle(color: Colors.white)),
-                        backgroundColor: Colors.pink, // Pink success snackbar
-                      ),
+                    Navigator.of(context).pop();
+                    _reloadAbonos();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Abono eliminado correctamente', style: TextStyle(color: Colors.white)), backgroundColor: _accentGreen),
                     );
-                    _reloadAbonos(); // Reload abonos after successful deletion
                   }
                 } catch (e) {
-                  print('Error during Abono deletion: $e'); // For debugging
-                  // Check if the main widget is still mounted before showing error dialog
                   if (mounted) {
-                    _showErrorDialog('Error al eliminar abono: $e'); // Use existing error dialog
+                    Navigator.of(context).pop();
+                    _showErrorDialog('Error al eliminar abono: $e');
                   }
                 }
               },
-              child: const Text('Sí', style: TextStyle(color: Colors.pink)),
+              style: ElevatedButton.styleFrom(backgroundColor: _accentRed),
+              child: const Text('Sí', style: TextStyle(color: Colors.white)),
             ),
           ],
         );
@@ -139,85 +166,157 @@ class _AbonoListModalState extends State<AbonoListModal> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
-      elevation: 0.0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
+      elevation: 0,
       backgroundColor: Colors.transparent,
-      child: Scaffold( // <<<--- ADDED SCAFFOLD HERE
-        backgroundColor: Colors.transparent, // Make Scaffold background transparent
-        body: Container(
-          padding: const EdgeInsets.all(16.0),
-          decoration: BoxDecoration(
-            color: Colors.white, // Keep white background for content
-            borderRadius: BorderRadius.circular(10.0),
-          ),
+      child: Container(
+        width: MediaQuery.of(context).size.width * 0.9,
+        height: MediaQuery.of(context).size.height * 0.8,
+        decoration: BoxDecoration(
+          color: _lightGrey,
+          borderRadius: BorderRadius.circular(20.0),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.15),
+              blurRadius: 15,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20.0),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Abonos para Pedido Nro: ${widget.idPedido}',
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black),
-                  ),
+              AppBar(
+                title: Text('Abonos del Pedido ${widget.idPedido}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20)),
+                backgroundColor: _primaryRose,
+                automaticallyImplyLeading: false,
+                actions: [
                   IconButton(
-                    icon: const Icon(Icons.close, color: Colors.black),
+                    icon: const Icon(Icons.close, color: Colors.white),
                     onPressed: () {
                       Navigator.of(context).pop();
                     },
                   ),
                 ],
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.vertical(
+                    top: Radius.circular(20),
+                  ),
+                ),
+                elevation: 0,
               ),
-              const Divider(color: Colors.pink), // Pink divider
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Total Pedido: \$${widget.totalPedido.toStringAsFixed(2)}',
+                      style: const TextStyle(fontSize: 16, color: _darkGrey, fontWeight: FontWeight.w600),
+                    ),
+                    FutureBuilder<double>(
+                      future: _totalAbonadoFuture,
+                      builder: (context, snapshot) {
+                        double totalAbonado = snapshot.data ?? 0.0;
+                        double saldoPendiente = widget.totalPedido - totalAbonado;
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              'Abonado: \$${totalAbonado.toStringAsFixed(2)}',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: _accentGreen,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            Text(
+                              'Saldo: \$${saldoPendiente.toStringAsFixed(2)}',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: saldoPendiente > 0.01 ? _accentRed : _accentGreen,
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
               Expanded(
                 child: FutureBuilder<List<Abono>>(
                   future: _abonosFuture,
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Colors.pink))); // Pink loading indicator
+                      return const Center(child: CircularProgressIndicator(color: _primaryRose));
                     } else if (snapshot.hasError) {
-                      return Center(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.black)));
+                      return Center(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: _accentRed)));
                     } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                      return const Center(child: Text('No hay abonos para este pedido.', style: TextStyle(color: Colors.black)));
+                      return const Center(child: Text('No hay abonos para este pedido.', style: TextStyle(color: _textGrey)));
                     } else {
                       final abonos = snapshot.data!;
                       return ListView.builder(
+                        padding: const EdgeInsets.all(12.0),
                         itemCount: abonos.length,
                         itemBuilder: (context, index) {
                           final abono = abonos[index];
                           return Card(
-                            margin: const EdgeInsets.symmetric(vertical: 4.0),
-                            elevation: 2.0, // Added subtle elevation to cards
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)), // Rounded corners for cards
-                            child: ListTile(
-                              leading: abono.urlImagen != null && abono.urlImagen!.isNotEmpty
-                                  ? CircleAvatar(
-                                      backgroundImage: NetworkImage(abono.urlImagen!),
-                                      radius: 20,
-                                    )
-                                  : CircleAvatar(
-                                      backgroundColor: Colors.pink.shade50, // Light pink background
-                                      child: const Icon(Icons.payment, color: Colors.pink), // Pink icon
-                                      radius: 20,
+                            margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                            elevation: 3,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            color: Colors.white,
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Cantidad: \$${abono.cantidadPagar?.toStringAsFixed(2) ?? 'N/A'}',
+                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: _darkGrey),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          'Método de Pago: ${abono.metodoPago ?? 'N/A'}',
+                                          style: const TextStyle(fontSize: 15, color: _textGrey),
+                                        ),
+                                        
+                                        if (abono.urlImagen != null && abono.urlImagen!.isNotEmpty)
+                                          Padding(
+                                            padding: const EdgeInsets.only(top: 10.0),
+                                            child: ClipRRect(
+                                              borderRadius: BorderRadius.circular(8),
+                                              child: Image.network(
+                                                abono.urlImagen!,
+                                                height: 80,
+                                                width: 80,
+                                                fit: BoxFit.cover,
+                                                errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image, size: 80, color: _textGrey),
+                                              ),
+                                            ),
+                                          ),
+                                      ],
                                     ),
-                              title: Text('Método: ${abono.metodoPago ?? 'N/A'}', style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-                              subtitle: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('Cantidad: \$${abono.cantidadPagar?.toStringAsFixed(2) ?? '0.00'}', style: const TextStyle(color: Colors.black87)),
-                                  if (abono.idImagen != null) Text('ID Imagen: ${abono.idImagen}', style: const TextStyle(color: Colors.black54)),
-                                ],
-                              ),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    icon: const Icon(Icons.edit, color: Colors.black), // Black edit icon
-                                    onPressed: () => _editAbono(abono),
                                   ),
-                                  IconButton(
-                                    icon: const Icon(Icons.delete, color: Colors.black), // Black delete icon
-                                    onPressed: () => _deleteAbono(abono.idAbono!),
+                                  Column(
+                                    children: [
+                                      IconButton(
+                                        icon: const Icon(Icons.edit, color: Colors.blueAccent),
+                                        onPressed: () => _editAbono(abono),
+                                        tooltip: 'Editar Abono',
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.delete, color: _accentRed),
+                                        onPressed: () => _deleteAbono(abono.idAbono!),
+                                        tooltip: 'Eliminar Abono',
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
@@ -229,16 +328,18 @@ class _AbonoListModalState extends State<AbonoListModal> {
                   },
                 ),
               ),
-              const SizedBox(height: 10),
-              ElevatedButton.icon(
-                onPressed: _addAbono,
-                icon: const Icon(Icons.add),
-                label: const Text('Agregar Abono'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.pink, // Pink button
-                  foregroundColor: Colors.white, // White text and icon
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12), // Larger padding
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)), // Rounded corners
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 15.0),
+                child: ElevatedButton.icon(
+                  onPressed: _addAbono,
+                  icon: const Icon(Icons.add_circle_outline, color: Colors.white, size: 28),
+                  label: const Text('Agregar Nuevo Abono', style: TextStyle(color: Colors.white, fontSize: 18)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _primaryRose,
+                    padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 15),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    elevation: 5,
+                  ),
                 ),
               ),
             ],
