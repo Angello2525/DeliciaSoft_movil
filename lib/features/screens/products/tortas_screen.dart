@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
-import '../../models/General_models.dart';
+import '../../models/General_models.dart' as GeneralModels;
 import '../../services/tortas_api_services.dart';
 import 'Detail/TortaDetailScreen.dart';
+// Comentamos este import para evitar conflictos
+import '../../models/product_model.dart';
 
 class TortasScreen extends StatefulWidget {
   final String categoryTitle;
@@ -17,8 +19,8 @@ class _TortasScreenState extends State<TortasScreen> {
   final TextEditingController _searchController = TextEditingController();
   final ProductoApiService _apiService = ProductoApiService();
   
-  List<ProductModel> allProductos = [];
-  List<ProductModel> filteredProductos = [];
+  List<GeneralModels.ProductModel> allProductos = [];
+  List<GeneralModels.ProductModel> filteredProductos = [];
   bool isLoading = true;
   String? errorMessage;
 
@@ -36,8 +38,8 @@ class _TortasScreenState extends State<TortasScreen> {
         errorMessage = null;
       });
 
-      // Obtener productos de fresas con crema directamente
-      List<ProductModel> productos = await _apiService.obtenerProductosPorCategoria('tortas');
+      // Obtener productos de obleas directamente
+      List<GeneralModels.ProductModel> productos = await _apiService.obtenerProductosPorCategoria('Tortas');
       
       if (mounted) {
         setState(() {
@@ -102,16 +104,15 @@ class _TortasScreenState extends State<TortasScreen> {
     }
   }
 
-  void _navigateToDetail(ProductModel producto) {
-  // Navigator.push(
-  //   context,
-  //   MaterialPageRoute(
-  //     builder: (context) => DonasDetailScreen(product: producto),
-  //   ),
-  // );
+void _navigateToDetail(ProductModel producto) { 
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => TortaDetailScreen(product: producto),
+    ),
+  );
 }
-
-  Widget _buildCard(ProductModel producto) {
+  Widget _buildCard(GeneralModels.ProductModel producto) {
     final nombre = producto.nombreProducto;
     final imagen = producto.urlImg ?? '';
     final precio = producto.precioProducto;
@@ -122,7 +123,7 @@ class _TortasScreenState extends State<TortasScreen> {
         borderRadius: BorderRadius.circular(20),
       ),
       child: InkWell(
-        onTap: () => _navigateToDetail(producto),
+        onTap: () => _navigateToDetail(ProductModel.fromBackendJson(producto)),
         borderRadius: BorderRadius.circular(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -311,7 +312,7 @@ class _TortasScreenState extends State<TortasScreen> {
 
   @override
   Widget build(BuildContext context) {
-    print(' Productos filtrados: ${filteredProductos.length}');
+    print('Productos filtrados: ${filteredProductos.length}');
     return Scaffold(
       backgroundColor: const Color(0xFFFFF1F6),
       appBar: AppBar(

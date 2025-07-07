@@ -11,12 +11,13 @@ class ProductModel {
     required this.price,
   });
 
-  factory ProductModel.fromBackendJson(Map<String, dynamic> json, String imageUrl) {
+ // En tu clase ProductModel, cambia el método fromBackendJson:
+factory ProductModel.fromBackendJson(dynamic generalModel) {
   return ProductModel(
-    title: json['nombreProducto'] ?? 'Sin título',
-    description: 'Producto sin descripción', // si no viene desde el backend
-    imageUrl: imageUrl,
-    price: (json['precioProducto'] ?? 0).toDouble(),
+    title: generalModel.nombreProducto ?? 'Sin título',
+    description: generalModel.descripcion ?? 'Producto sin descripción',
+    imageUrl: generalModel.urlImg ?? '',
+    price: (generalModel.precioProducto ?? 0).toDouble(),
   );
 }
 }
