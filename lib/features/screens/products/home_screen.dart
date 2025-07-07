@@ -1,8 +1,11 @@
+
 import 'package:flutter/material.dart';
 import '../../models/category.dart';
 import '../../widgets/category_card.dart';
 import '../../services/categoria_api_service.dart';
-
+import 'package:provider/provider.dart'; 
+import '../../services/cart_services.dart'; 
+import '../cart_screen.dart'; 
 import 'fresa_screen.dart';
 import 'oblea_screen.dart';
 import 'tortas_screen.dart';
@@ -71,14 +74,55 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // AppBar dinámico personalizado (puedes cambiarlo si luego viene de la API)
-      appBar: AppBar(
-        title: const Text('Categorías Delicias Darsy'),
-        centerTitle: true,
-        backgroundColor: Colors.pinkAccent,
+     appBar: AppBar(
+        title: const Text('Categorías de Productos'), // O el título que desees
+        actions: [
+          // Ícono del carrito con contador
+          Consumer<CartService>(
+            builder: (context, cartService, child) {
+              return Stack(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.shopping_cart),
+                    onPressed: () {
+                      // Navega a la pantalla del carrito al tocar el icono
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const CartScreen()),
+                      );
+                    },
+                  ),
+                  if (cartService.totalQuantity > 0) // Solo muestra el badge si hay ítems
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 16,
+                          minHeight: 16,
+                        ),
+                        child: Text(
+                          '${cartService.totalQuantity}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+          const SizedBox(width: 10),
+        ],
       ),
-
-      // Construcción del cuerpo cuando llegan los datos de la API
       body: FutureBuilder<List<Category>>(
         future: _futureCategorias,
         builder: (context, snapshot) {

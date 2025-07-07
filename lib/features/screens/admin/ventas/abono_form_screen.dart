@@ -7,6 +7,7 @@ import '../../../models/Venta/imagene.dart';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 
+
 class AbonoFormScreen extends StatefulWidget {
   final int idPedido;
   final Abono? abono;
@@ -98,8 +99,10 @@ class _AbonoFormScreenState extends State<AbonoFormScreen> {
         if (_selectedImage != null) {
           try {
             final uploadedImg = await ApiService.uploadImage(_selectedImage!);
+
             finalIdImagen = uploadedImg.idImagen;
             finalImageUrl = uploadedImg.urlImg;
+
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Imagen cargada exitosamente!', style: TextStyle(color: Colors.white)), backgroundColor: _accentGreen),
             );
@@ -359,7 +362,7 @@ class _AbonoFormScreenState extends State<AbonoFormScreen> {
                             style: const TextStyle(color: _textGrey, fontSize: 13),
                           ),
                         ),
-                      if (_selectedImage != null)
+                     if (_selectedImage != null)
                         Container(
                           margin: const EdgeInsets.only(top: 15),
                           height: 120,
@@ -381,7 +384,9 @@ class _AbonoFormScreenState extends State<AbonoFormScreen> {
                                     errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image, size: 60, color: _textGrey),
                                   ),
                           ),
+
                         )
+
                       else if (_uploadedImage?.urlImg != null && _uploadedImage!.urlImg!.isNotEmpty)
                         Container(
                           margin: const EdgeInsets.only(top: 15),

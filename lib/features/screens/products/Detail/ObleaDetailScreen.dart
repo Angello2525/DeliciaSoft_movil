@@ -1,39 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-import '../../../models/product_model.dart';
-
-// Modelo para CatalogoAdiciones
-class CatalogoAdicion {
-  final int id;
-  final String nombre;
-  final String descripcion;
-  final double precio;
-  final bool activo;
-
-  CatalogoAdicion({
-    required this.id,
-    required this.nombre,
-    required this.descripcion,
-    required this.precio,
-    required this.activo,
-  });
-
-  factory CatalogoAdicion.fromJson(Map<String, dynamic> json) {
-    return CatalogoAdicion(
-      id: json['id'] ?? 0,
-      nombre: json['nombre'] ?? '',
-      descripcion: json['descripcion'] ?? '',
-      precio: (json['precio'] ?? 0.0).toDouble(),
-      activo: json['activo'] ?? true,
-    );
-  }
-}
+import 'package:provider/provider.dart';
+import '../../../models/General_models.dart';
+import '../../../services/cart_services.dart';
+import '../../../models/cart_models.dart';
+import '../../../models/ProductConfiguration.dart'; // Importar ProductConfiguration
 
 class ObleaDetailScreen extends StatefulWidget {
   final ProductModel product;
+  final CartItem? existingCartItem;
 
-  const ObleaDetailScreen({super.key, required this.product});
+  const ObleaDetailScreen({
+    super.key,
+    required this.product,
+    this.existingCartItem,
+  });
 
   @override
   State<ObleaDetailScreen> createState() => _ObleaDetailScreenState();
@@ -42,33 +22,44 @@ class ObleaDetailScreen extends StatefulWidget {
 class _ObleaDetailScreenState extends State<ObleaDetailScreen> {
   int quantity = 1;
   List<ObleaConfiguration> obleaConfigurations = [];
-  List<CatalogoAdicion> toppingsDisponibles = [];
-  bool isLoadingToppings = false;
 
-  // Mantener la lógica original de obleas
+  final Map<String, List<String>> ingredientesPersonalizables = {
+    'Oblea Sencilla (\$3000)': ['Chispitas'],
+    'Oblea Sencilla (\$6000)': ['Chispitas'],
+    'Oblea Premium (\$7000)': ['Chips de Chocolate', 'Maní'],
+    'Oblea Premium (\$8000)': ['Chips de Chocolate', 'Maní'],
+    'Oblea Premium (\$9000)': ['Chips de Chocolate', 'Maní'],
+  };
+
+  final Map<String, List<String>> opcionesReemplazo = {
+    'Chispitas': ['Chocolate', 'Maní'],
+    'Chips de Chocolate': ['Grajeas', 'Maní', 'Chispitas'],
+    'Maní': ['Grajeas', 'Chispitas', 'Chips de Chocolate'],
+  };
+
   final Map<String, ObleaDefaults> obleaDefaults = {
-    'Oblea Sencilla (\$300)': ObleaDefaults(
-      precio: 300,
+    'Oblea Sencilla (\$3000)': ObleaDefaults(
+      precio: 3000,
       ingredientesFijos: ['Arequipe'],
-      ingredientesPersonalizablesOriginales: {'Chispitas': 'Chispitas'},
+      ingredientesPersonalizables: {'Chispitas': 'Chispitas'},
     ),
-    'Oblea Premium (\$6000)': ObleaDefaults(
+    'Oblea clasica (\$6000)': ObleaDefaults(
       precio: 6000,
       ingredientesFijos: ['Oreo', 'Arequipe', 'Queso', 'Crema de Leche'],
-      ingredientesPersonalizablesOriginales: {'Chips de Chocolate': 'Chips de Chocolate'},
+      ingredientesPersonalizables: {'Chips de Chocolate': 'Chips de Chocolate'},
     ),
-    'Oblea Premium (\$7000)': ObleaDefaults(
+    'Oblea grande (\$7000)': ObleaDefaults(
       precio: 7000,
       ingredientesFijos: ['Oreo', 'Arequipe', 'Queso', 'Crema de Leche'],
-      ingredientesPersonalizablesOriginales: {
+      ingredientesPersonalizables: {
         'Chips de Chocolate': 'Chips de Chocolate',
         'Maní': 'Maní'
       },
     ),
-    'Oblea Premium (\$8000)': ObleaDefaults(
+    'Oblea de la casa (\$8000)': ObleaDefaults(
       precio: 8000,
       ingredientesFijos: ['Oreo', 'Arequipe', 'Queso', 'Crema de Leche', 'Fresa'],
-      ingredientesPersonalizablesOriginales: {
+      ingredientesPersonalizables: {
         'Chips de Chocolate': 'Chips de Chocolate',
         'Maní': 'Maní'
       },
@@ -76,7 +67,7 @@ class _ObleaDetailScreenState extends State<ObleaDetailScreen> {
     'Oblea Premium (\$9000)': ObleaDefaults(
       precio: 9000,
       ingredientesFijos: ['Oreo', 'Arequipe', 'Queso', 'Crema de Leche', 'Fresa', 'Durazno'],
-      ingredientesPersonalizablesOriginales: {
+      ingredientesPersonalizables: {
         'Chips de Chocolate': 'Chips de Chocolate',
         'Maní': 'Maní'
       },
@@ -84,7 +75,7 @@ class _ObleaDetailScreenState extends State<ObleaDetailScreen> {
   };
 
   final List<String> tiposOblea = [
-    'Oblea Sencilla (\$300)',
+    'Oblea Sencilla (\$3000)',
     'Oblea clasica (\$6000)',
     'Oblea grande (\$7000)',
     'Oblea de la casa (\$8000)',
@@ -94,80 +85,30 @@ class _ObleaDetailScreenState extends State<ObleaDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _initializeConfigurations();
-    _loadToppingsFromAPI();
-  }
-
-  // Método para cargar toppings desde la API
-  Future<void> _loadToppingsFromAPI() async {
-    setState(() {
-      isLoadingToppings = true;
-    });
-
-    try {
-      final response = await http.get(
-        Uri.parse('http://deliciasoft.somee.com/api/CatalogoAdiciones'),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
-        setState(() {
-          // Solo usar los toppings que vienen de la API y están activos
-          toppingsDisponibles = data
-              .map((item) => CatalogoAdicion.fromJson(item))
-              .where((topping) => topping.activo)
-              .toList();
-        });
-        
-        print('Toppings cargados desde API: ${toppingsDisponibles.length}');
-        for (var topping in toppingsDisponibles) {
-          print('- ${topping.nombre} (ID: ${topping.id})');
-        }
-      } else {
-        print('Error al cargar toppings: ${response.statusCode}');
-        print('Response body: ${response.body}');
-        _useFallbackToppings();
-      }
-    } catch (e) {
-      print('Error de conexión: $e');
-      _useFallbackToppings();
-    } finally {
-      setState(() {
-        isLoadingToppings = false;
-      });
+    if (widget.existingCartItem != null) {
+      quantity = widget.existingCartItem!.cantidad;
+      // Convertir las configuraciones existentes
+      obleaConfigurations = widget.existingCartItem!.configuraciones.map((cartObleaConfig) {
+        return ObleaConfiguration(
+          tipoOblea: cartObleaConfig.tipoOblea,
+          ingredientesPersonalizados: Map<String, String>.from(cartObleaConfig.ingredientesPersonalizados),
+          precio: cartObleaConfig.precio,
+        );
+      }).toList();
+    } else {
+      _initializeConfigurations();
     }
-  }
-
-  void _useFallbackToppings() {
-    // En caso de error con la API, mantener la lista vacía
-    // y mostrar mensaje de error al usuario
-    setState(() {
-      toppingsDisponibles = [];
-    });
-    
-    // Mostrar mensaje de error
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Error al cargar los toppings. Intenta nuevamente.'),
-        backgroundColor: Colors.red,
-        duration: Duration(seconds: 3),
-      ),
-    );
   }
 
   void _initializeConfigurations() {
     obleaConfigurations = List.generate(
-      quantity, 
-      (index) => ObleaConfiguration()
+      quantity,
+      (index) => ObleaConfiguration(),
     );
   }
 
   double _getUnitPrice(ObleaConfiguration config) {
     if (config.tipoOblea.isEmpty) return 0;
-    
     final defaults = obleaDefaults[config.tipoOblea];
     return defaults?.precio ?? 0;
   }
@@ -180,6 +121,54 @@ class _ObleaDetailScreenState extends State<ObleaDetailScreen> {
     return total;
   }
 
+  void _handleAddToCart() async {
+    List<String> errors = [];
+    for (int i = 0; i < obleaConfigurations.length; i++) {
+      final config = obleaConfigurations[i];
+      if (config.tipoOblea.isEmpty) {
+        errors.add('Oblea ${i + 1}: Selecciona un tipo de oblea');
+      }
+    }
+
+    if (errors.isNotEmpty) {
+      _showValidationAlert(errors);
+      return;
+    }
+
+    final cartService = Provider.of<CartService>(context, listen: false);
+
+    // Actualizar precios en las configuraciones
+    for (var config in obleaConfigurations) {
+      config.precio = _getUnitPrice(config);
+    }
+
+    try {
+      if (widget.existingCartItem != null) {
+        // Actualizar item existente
+        await cartService.updateQuantity(widget.existingCartItem!.id, quantity);
+        await cartService.updateConfiguration(widget.existingCartItem!.id, obleaConfigurations);
+      } else {
+        // Agregar nuevo item
+        await cartService.addToCart(
+          producto: widget.product,
+          cantidad: quantity,
+          configuraciones: obleaConfigurations,
+        );
+      }
+
+      _showSuccessAlert();
+    } catch (e) {
+      _showErrorAlert('Error al agregar al carrito: $e');
+    }
+  }
+
+  void _resetForm() {
+    setState(() {
+      quantity = 1;
+      obleaConfigurations = [ObleaConfiguration()];
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -188,18 +177,6 @@ class _ObleaDetailScreenState extends State<ObleaDetailScreen> {
         child: Column(
           children: [
             _buildAppBar(),
-            if (isLoadingToppings)
-              const Padding(
-                padding: EdgeInsets.all(16.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircularProgressIndicator(color: Colors.pinkAccent),
-                    SizedBox(width: 12),
-                    Text('Cargando toppings...', style: TextStyle(color: Colors.pinkAccent)),
-                  ],
-                ),
-              ),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
@@ -225,7 +202,7 @@ class _ObleaDetailScreenState extends State<ObleaDetailScreen> {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              widget.product.title,
+              widget.product.nombreProducto,
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 20,
@@ -247,16 +224,14 @@ class _ObleaDetailScreenState extends State<ObleaDetailScreen> {
         _buildProductImage(),
         const SizedBox(height: 12),
         Text(
-          widget.product.description,
+          widget.product.descripcion ?? 'Producto sin descripción',
           textAlign: TextAlign.center,
           style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
         ),
         const SizedBox(height: 20),
         _buildMainQuantitySelector(),
         const SizedBox(height: 16),
-        
         ...List.generate(quantity, (index) => _buildObleaConfiguration(index)),
-        
         const SizedBox(height: 16),
         _buildPriceSummary(),
         const SizedBox(height: 16),
@@ -266,11 +241,20 @@ class _ObleaDetailScreenState extends State<ObleaDetailScreen> {
   }
 
   Widget _buildObleaConfiguration(int index) {
-    if (index >= obleaConfigurations.length) return Container();
-    
+    if (index >= obleaConfigurations.length) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && index >= obleaConfigurations.length) {
+          setState(() {
+            obleaConfigurations.add(ObleaConfiguration());
+          });
+        }
+      });
+      return Container();
+    }
+
     final config = obleaConfigurations[index];
     final defaults = config.tipoOblea.isNotEmpty ? obleaDefaults[config.tipoOblea] : null;
-    
+
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -289,7 +273,6 @@ class _ObleaDetailScreenState extends State<ObleaDetailScreen> {
               ),
             ),
             const SizedBox(height: 12),
-
             _buildDropdown(
               'Tipo de Oblea',
               config.tipoOblea,
@@ -298,13 +281,14 @@ class _ObleaDetailScreenState extends State<ObleaDetailScreen> {
                 setState(() {
                   config.tipoOblea = val;
                   config.ingredientesPersonalizados.clear();
-                  if (defaults != null) {
-                    config.ingredientesPersonalizados.addAll(defaults.ingredientesPersonalizablesOriginales);
+                  final newDefaults = obleaDefaults[val];
+                  if (newDefaults != null) {
+                    config.ingredientesPersonalizados.addAll(newDefaults.ingredientesPersonalizables);
                   }
                 });
               },
             ),
-            
+
             if (defaults != null && defaults.ingredientesFijos.isNotEmpty) ...[
               const SizedBox(height: 12),
               Container(
@@ -328,30 +312,30 @@ class _ObleaDetailScreenState extends State<ObleaDetailScreen> {
                     Wrap(
                       spacing: 8,
                       runSpacing: 4,
-                      children: defaults.ingredientesFijos.map((ingrediente) => 
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.blue[100],
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            ingrediente,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.blue,
+                      children: defaults.ingredientesFijos.map((ingrediente) =>
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.blue[100],
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              ingrediente,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.blue,
+                              ),
                             ),
                           ),
-                        ),
                       ).toList(),
                     ),
                   ],
                 ),
               ),
             ],
-            
-            if (config.tipoOblea.isNotEmpty && defaults != null) ...[
+
+            if (config.tipoOblea.isNotEmpty && defaults != null && defaults.ingredientesPersonalizables.isNotEmpty) ...[
               const SizedBox(height: 12),
               const Text(
                 'Personalización disponible:',
@@ -361,11 +345,11 @@ class _ObleaDetailScreenState extends State<ObleaDetailScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              ...defaults.ingredientesPersonalizablesOriginales.keys.map((ingrediente) => 
-                _buildIngredientePersonalizable(config, ingrediente),
+              ...defaults.ingredientesPersonalizables.keys.map((ingrediente) =>
+                  _buildIngredientePersonalizable(config, ingrediente),
               ).toList(),
             ],
-            
+
             const SizedBox(height: 8),
             if (config.tipoOblea.isNotEmpty)
               Container(
@@ -410,41 +394,9 @@ class _ObleaDetailScreenState extends State<ObleaDetailScreen> {
   }
 
   Widget _buildIngredientePersonalizable(ObleaConfiguration config, String ingredienteOriginal) {
-    // Usar solo los toppings que vienen de la API
-    final opcionesFromAPI = toppingsDisponibles.map((t) => t.nombre).toList();
+    final opciones = opcionesReemplazo[ingredienteOriginal] ?? [];
     final valorActual = config.ingredientesPersonalizados[ingredienteOriginal] ?? ingredienteOriginal;
-    
-    // Si no hay toppings disponibles, mostrar mensaje
-    if (toppingsDisponibles.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.orange[50],
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.orange[200]!),
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.warning, color: Colors.orange[600], size: 20),
-              const SizedBox(width: 8),
-              const Expanded(
-                child: Text(
-                  'No se pudieron cargar los toppings disponibles',
-                  style: TextStyle(color: Colors.orange),
-                ),
-              ),
-              TextButton(
-                onPressed: _loadToppingsFromAPI,
-                child: const Text('Reintentar'),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-    
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -466,7 +418,7 @@ class _ObleaDetailScreenState extends State<ObleaDetailScreen> {
               ),
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
-                  value: opcionesFromAPI.contains(valorActual) ? valorActual : ingredienteOriginal,
+                  value: valorActual,
                   isExpanded: true,
                   icon: const Icon(Icons.keyboard_arrow_down_rounded),
                   padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -475,11 +427,11 @@ class _ObleaDetailScreenState extends State<ObleaDetailScreen> {
                       value: ingredienteOriginal,
                       child: Text('$ingredienteOriginal (Original)'),
                     ),
-                    ...opcionesFromAPI.where((opcion) => opcion != ingredienteOriginal).map((opcion) => 
-                      DropdownMenuItem(
-                        value: opcion,
-                        child: Text(opcion),
-                      ),
+                    ...opciones.map((opcion) =>
+                        DropdownMenuItem(
+                          value: opcion,
+                          child: Text(opcion),
+                        ),
                     ).toList(),
                   ],
                   onChanged: (val) {
@@ -505,11 +457,12 @@ class _ObleaDetailScreenState extends State<ObleaDetailScreen> {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
         child: Image.network(
-          widget.product.imageUrl,
+          widget.product.urlImg ?? '',
           height: 200,
+          width: double.infinity,
           fit: BoxFit.cover,
           errorBuilder: (_, __, ___) =>
-              const Icon(Icons.cookie, size: 100, color: Colors.pinkAccent),
+          const Icon(Icons.cookie, size: 100, color: Colors.pinkAccent),
         ),
       ),
     );
@@ -586,31 +539,34 @@ class _ObleaDetailScreenState extends State<ObleaDetailScreen> {
   }
 
   Widget _buildAddToCartBar() {
+    final bool isEditing = widget.existingCartItem != null;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.pink[100],
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 4))],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
             'Total: \$${totalPrice.toStringAsFixed(0)}',
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color.fromARGB(255, 175, 76, 119)),
           ),
-          GestureDetector(
-            onTap: _handleAddToCart,
-            child: Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.pinkAccent,
+          ElevatedButton.icon(
+            onPressed: _handleAddToCart,
+            icon: Icon(isEditing ? Icons.check_rounded : Icons.add_shopping_cart_rounded),
+            label: Text(isEditing ? 'Actualizar' : 'Añadir'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.pinkAccent,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
-                boxShadow: const [
-                  BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 3)),
-                ],
               ),
-              child: const Icon(Icons.add_shopping_cart_rounded, color: Colors.white, size: 26),
+              elevation: 4,
             ),
           ),
         ],
@@ -641,25 +597,6 @@ class _ObleaDetailScreenState extends State<ObleaDetailScreen> {
         onChanged: (val) => val != null ? onChanged(val) : null,
       ),
     );
-  }
-
-  void _handleAddToCart() {
-    List<String> errors = [];
-    
-    for (int i = 0; i < obleaConfigurations.length; i++) {
-      final config = obleaConfigurations[i];
-      
-      if (config.tipoOblea.isEmpty) {
-        errors.add('Oblea ${i + 1}: Selecciona un tipo de oblea');
-      }
-    }
-    
-    if (errors.isNotEmpty) {
-      _showValidationAlert(errors);
-      return;
-    }
-
-    _showSuccessAlert();
   }
 
   void _showValidationAlert(List<String> errors) {
@@ -709,15 +646,15 @@ class _ObleaDetailScreenState extends State<ObleaDetailScreen> {
                   child: Column(
                     children: errors
                         .map((error) => Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 2),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text('• ', style: TextStyle(fontWeight: FontWeight.bold)),
-                                  Expanded(child: Text(error)),
-                                ],
-                              ),
-                            ))
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('• ', style: TextStyle(fontWeight: FontWeight.bold)),
+                          Expanded(child: Text(error)),
+                        ],
+                      ),
+                    ))
                         .toList(),
                   ),
                 ),
@@ -748,6 +685,11 @@ class _ObleaDetailScreenState extends State<ObleaDetailScreen> {
   }
 
   void _showSuccessAlert() {
+    final bool isEditing = widget.existingCartItem != null;
+    final String successMessage = isEditing
+        ? 'Se ha actualizado la oblea en el carrito'
+        : 'Se ${quantity == 1 ? 'ha' : 'han'} añadido $quantity ${quantity == 1 ? 'oblea' : 'obleas'} al carrito';
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -772,16 +714,16 @@ class _ObleaDetailScreenState extends State<ObleaDetailScreen> {
                   color: Colors.green[100],
                   shape: BoxShape.circle,
                 ),
-                child: Icon(
+                child: const Icon(
                   Icons.check_circle_outline,
-                  color: const Color.fromARGB(255, 160, 67, 112),
+                  color: Color.fromARGB(255, 160, 67, 112),
                   size: 40,
                 ),
               ),
               const SizedBox(height: 16),
-              const Text(
-                '¡Éxito!',
-                style: TextStyle(
+              Text(
+                isEditing ? '¡Actualizado!' : '¡Éxito!',
+                style: const TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
                   color: Color.fromARGB(255, 175, 76, 137),
@@ -789,7 +731,7 @@ class _ObleaDetailScreenState extends State<ObleaDetailScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Se ${quantity == 1 ? 'ha' : 'han'} añadido $quantity ${quantity == 1 ? 'oblea' : 'obleas'} al carrito',
+                successMessage,
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 16),
               ),
@@ -809,7 +751,9 @@ class _ObleaDetailScreenState extends State<ObleaDetailScreen> {
                   OutlinedButton(
                     onPressed: () {
                       Navigator.pop(context);
-                      _resetForm();
+                      if (!isEditing) {
+                        _resetForm();
+                      }
                     },
                     style: OutlinedButton.styleFrom(
                       foregroundColor: const Color.fromARGB(255, 175, 76, 119),
@@ -824,7 +768,7 @@ class _ObleaDetailScreenState extends State<ObleaDetailScreen> {
                   ElevatedButton(
                     onPressed: () {
                       Navigator.pop(context);
-                      Navigator.pop(context); 
+                      Navigator.pop(context);
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color.fromARGB(255, 175, 76, 130),
@@ -845,29 +789,31 @@ class _ObleaDetailScreenState extends State<ObleaDetailScreen> {
     );
   }
 
-  void _resetForm() {
-    setState(() {
-      quantity = 1;
-      obleaConfigurations = [ObleaConfiguration()];
-    });
+  void _showErrorAlert(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Error'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
-}
-
-class ObleaConfiguration {
-  String tipoOblea = '';
-  Map<String, String> ingredientesPersonalizados = {};
-  
-  ObleaConfiguration();
 }
 
 class ObleaDefaults {
   final double precio;
   final List<String> ingredientesFijos;
-  final Map<String, String> ingredientesPersonalizablesOriginales;
-  
+  final Map<String, String> ingredientesPersonalizables;
+
   ObleaDefaults({
     required this.precio,
     required this.ingredientesFijos,
-    required this.ingredientesPersonalizablesOriginales,
+    required this.ingredientesPersonalizables,
   });
 }

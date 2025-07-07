@@ -20,7 +20,7 @@ import '../models/venta/imagene.dart';
 import 'package:image_picker/image_picker.dart'; 
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
-
+import 'package:intl/intl.dart'; 
 
 class ApiService {
   static const String __baseUrl = Constants.baseUrl;
@@ -1320,7 +1320,21 @@ static Future<ApiResponse<Usuario>> getCurrentAdminProfile(String token, String 
         filename: imageFile.name,
       ),
     );
+
   }
+
+  var response = await request.send();
+
+  if (response.statusCode == 201) {
+    final responseBody = await response.stream.bytesToString();
+    final Map<String, dynamic> jsonResponse = json.decode(responseBody);
+    return Imagene.fromJson(jsonResponse);
+  } else {
+    final errorBody = await response.stream.bytesToString();
+    throw Exception('Failed to upload image: ${response.statusCode} - $errorBody');
+ 
+  }
+}
 
   var response = await request.send();
 
@@ -1351,7 +1365,7 @@ static Future<ApiResponse<Usuario>> getCurrentAdminProfile(String token, String 
       headers: <String, String>{
         'Content-Type': 'application/json; charset=UTF-8',
       },
-      body: jsonEncode(abono.toCreateJson()), // <--- CAMBIO AQUÍ: Usar toCreateJson()
+      body: jsonEncode(abono.toCreateJson()), 
     );
 
     if (response.statusCode == 201) {
@@ -1382,5 +1396,74 @@ static Future<ApiResponse<Usuario>> getCurrentAdminProfile(String token, String 
       throw Exception('Failed to delete abono: ${response.statusCode} - ${response.body}');
     }
   }
+
+ static Future<Venta> createVenta(Venta venta) async {
+  final fechaFormateada = DateFormat('yyyy-MM-dd').format(venta.fechaVenta);
+  final requestBody = {
+  "fechaVenta": fechaFormateada,
+  "idCliente": venta.idCliente,
+  "idSede": venta.idSede,
+  "MetodoPago": venta.metodoPago,
+  "TipoVenta": venta.tipoVenta,
+  "estadoVenta": venta.estadoVenta,
+};
+
+  final response = await http.post(
+    Uri.parse('$__baseUrl/Ventums'),
+    headers: <String, String>{
+      'Content-Type': 'application/json; charset=UTF-8',
+    },
+    body: jsonEncode(requestBody),
+  );
+
+  if (kDebugMode) {
+    print('Request body: ${jsonEncode(requestBody)}');
+  }
+
+  if (response.statusCode == 201 || response.statusCode == 200) {
+    return Venta.fromJson(json.decode(response.body));
+  } else {
+    if (kDebugMode) {
+      print('Error response: ${response.body}');
+    }
+    throw Exception('Failed to create venta: ${response.statusCode} - ${response.body}');
+  }
+}
+
+// Crear DetalleVenta - CORREGIDO
+static Future<DetalleVenta> createDetalleVenta(DetalleVenta detalleVenta) async {
+  final requestBody = {
+    "idVenta": detalleVenta.idVenta,
+    "idProductoGeneral": detalleVenta.idProductoGeneral,
+    "cantidad": detalleVenta.cantidad,
+    "precioUnitario": detalleVenta.precioUnitario,
+    "subtotal": detalleVenta.subtotal,
+    "iva": detalleVenta.iva,
+    "total": detalleVenta.total,
+  };
+
+  final response = await http.post(
+    Uri.parse('$__baseUrl/DetalleVentums'),
+    headers: <String, String>{
+      'Content-Type': 'application/json; charset=UTF-8',
+    },
+    body: jsonEncode(requestBody),
+  );
+
+  // Solo mostrar logs en modo debug
+  if (kDebugMode) {
+    print('DetalleVenta request body: ${jsonEncode(requestBody)}');
+  }
+
+  if (response.statusCode == 201 || response.statusCode == 200) {
+    return DetalleVenta.fromJson(json.decode(response.body));
+  } else {
+    if (kDebugMode) {
+      print('Error response DetalleVenta: ${response.body}');
+    }
+    throw Exception('Failed to create detalleVenta: ${response.statusCode} - ${response.body}');
+  }
+}
+
   
 }

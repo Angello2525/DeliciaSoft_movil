@@ -1,3 +1,4 @@
+// venta.dart - CORREGIDO
 class Venta {
   final int idVenta;
   final DateTime fechaVenta;
@@ -18,25 +19,55 @@ class Venta {
   });
 
   factory Venta.fromJson(Map<String, dynamic> json) {
-    // Handle both string and DateTime for fechaVenta
     DateTime parsedDate;
     if (json['fechaVenta'] is String) {
-      // API might return "YYYY-MM-DD" for DateOnly, parse it carefully
-      parsedDate = DateTime.parse(json['fechaVenta']);
+      final dateString = json['fechaVenta'] as String;
+      // Manejar diferentes formatos de fecha
+      if (dateString.contains('T')) {
+        parsedDate = DateTime.parse(dateString);
+      } else {
+        // Si solo viene la fecha sin tiempo, agregar tiempo por defecto
+        parsedDate = DateTime.parse('${dateString}T00:00:00');
+      }
     } else if (json['fechaVenta'] is DateTime) {
       parsedDate = json['fechaVenta'];
     } else {
-      parsedDate = DateTime.now(); // Fallback
+      parsedDate = DateTime.now();
     }
 
     return Venta(
-      idVenta: json['idVenta'],
+      idVenta: json['idVenta'] ?? 0,
       fechaVenta: parsedDate,
-      idCliente: json['idCliente'],
-      idSede: json['idSede'],
-      metodoPago: json['metodoPago'],
-      tipoVenta: json['tipoVenta'],
-      estadoVenta: json['estadoVenta'],
+      idCliente: json['idCliente'] ?? 0,
+      idSede: json['idSede'] ?? 0,
+      metodoPago: json['metodoPago'] ?? '',
+      tipoVenta: json['tipoVenta'] ?? '',
+      estadoVenta: json['estadoVenta'] ?? false,
     );
+  }
+
+  // Método para crear JSON sin idVenta (para crear nuevas ventas)
+  Map<String, dynamic> toCreateJson() {
+    return {
+      'fechaVenta': fechaVenta.toIso8601String().split('T')[0], // Solo fecha YYYY-MM-DD
+      'idCliente': idCliente,
+      'idSede': idSede,
+      'metodoPago': metodoPago,
+      'tipoVenta': tipoVenta,
+      'estadoVenta': estadoVenta,
+    };
+  }
+
+  // Método para crear JSON completo
+  Map<String, dynamic> toJson() {
+    return {
+      'idVenta': idVenta,
+      'fechaVenta': fechaVenta.toIso8601String().split('T')[0], // Solo fecha YYYY-MM-DD
+      'idCliente': idCliente,
+      'idSede': idSede,
+      'metodoPago': metodoPago,
+      'tipoVenta': tipoVenta,
+      'estadoVenta': estadoVenta,
+    };
   }
 }
