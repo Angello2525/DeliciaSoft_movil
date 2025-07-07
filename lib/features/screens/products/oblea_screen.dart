@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
-import '../../models/General_models.dart' as GeneralModels;
+import '../../models/General_models.dart';
 import '../../services/obleas_api_services.dart';
 import 'Detail/ObleaDetailScreen.dart';
-// Comentamos este import para evitar conflictos
-import '../../models/product_model.dart';
+import '../../services/cart_services.dart'; 
+import 'package:provider/provider.dart'; 
+import '../cart_screen.dart'; 
 
 class ObleaScreen extends StatefulWidget {
   final String categoryTitle;
@@ -19,8 +20,8 @@ class _ObleaScreenState extends State<ObleaScreen> {
   final TextEditingController _searchController = TextEditingController();
   final ProductoApiService _apiService = ProductoApiService();
   
-  List<GeneralModels.ProductModel> allProductos = [];
-  List<GeneralModels.ProductModel> filteredProductos = [];
+  List<ProductModel> allProductos = [];
+  List<ProductModel> filteredProductos = [];
   bool isLoading = true;
   String? errorMessage;
 
@@ -38,8 +39,8 @@ class _ObleaScreenState extends State<ObleaScreen> {
         errorMessage = null;
       });
 
-      // Obtener productos de obleas directamente
-      List<GeneralModels.ProductModel> productos = await _apiService.obtenerProductosPorCategoria('Obleas');
+      // Obtener productos de fresas con crema directamente
+      List<ProductModel> productos = await _apiService.obtenerProductosPorCategoria('Obleas');
       
       if (mounted) {
         setState(() {
@@ -104,7 +105,7 @@ class _ObleaScreenState extends State<ObleaScreen> {
     }
   }
 
-void _navigateToDetail(ProductModel producto) { 
+  void _navigateToDetail(ProductModel producto) {
   Navigator.push(
     context,
     MaterialPageRoute(
@@ -112,7 +113,8 @@ void _navigateToDetail(ProductModel producto) {
     ),
   );
 }
-  Widget _buildCard(GeneralModels.ProductModel producto) {
+
+  Widget _buildCard(ProductModel producto) {
     final nombre = producto.nombreProducto;
     final imagen = producto.urlImg ?? '';
     final precio = producto.precioProducto;
@@ -123,7 +125,7 @@ void _navigateToDetail(ProductModel producto) {
         borderRadius: BorderRadius.circular(20),
       ),
       child: InkWell(
-        onTap: () => _navigateToDetail(ProductModel.fromBackendJson(producto)),
+        onTap: () => _navigateToDetail(producto),
         borderRadius: BorderRadius.circular(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -312,32 +314,56 @@ void _navigateToDetail(ProductModel producto) {
 
   @override
   Widget build(BuildContext context) {
-    print('Productos filtrados: ${filteredProductos.length}');
+    print(' Productos filtrados: ${filteredProductos.length}');
     return Scaffold(
       backgroundColor: const Color(0xFFFFF1F6),
       appBar: AppBar(
-        backgroundColor: Colors.pinkAccent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-        centerTitle: true,
-        title: Text(
-          'Seleccionaste: ${widget.categoryTitle}',
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        title: Text(widget.categoryTitle),
         actions: [
-          if (!isLoading)
-            IconButton(
-              icon: const Icon(Icons.refresh, color: Colors.white),
-              onPressed: _fetchProductos,
-              tooltip: 'Actualizar productos',
-            ),
+          // Ícono del carrito con contador
+          Consumer<CartService>(
+            builder: (context, cartService, child) {
+              return Stack(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.shopping_cart),
+                    onPressed: () {
+                      // Navega a la pantalla del carrito al tocar el icono
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const CartScreen()),
+                      );
+                    },
+                  ),
+                  if (cartService.totalQuantity > 0) // Solo muestra el badge si hay ítems
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 16,
+                          minHeight: 16,
+                        ),
+                        child: Text(
+                          '${cartService.totalQuantity}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+          const SizedBox(width: 10), // Espacio al final del AppBar
         ],
       ),
       body: isLoading
