@@ -16,32 +16,46 @@ class Pedido {
   });
 
   factory Pedido.fromJson(Map<String, dynamic> json) {
+    DateTime parsedDate;
+    if (json['fechaEntrega'] is String) {
+      final dateString = json['fechaEntrega'] as String;
+      // Manejar diferentes formatos de fecha
+      if (dateString.contains('T')) {
+        parsedDate = DateTime.parse(dateString);
+      } else {
+        // Si solo viene la fecha sin tiempo, agregar tiempo por defecto
+        parsedDate = DateTime.parse('${dateString}T00:00:00');
+      }
+    } else if (json['fechaEntrega'] is DateTime) {
+      parsedDate = json['fechaEntrega'];
+    } else {
+      parsedDate = DateTime.now().add(const Duration(days: 1));
+    }
+
     return Pedido(
-      idPedido: json['idPedido'],
-      idVenta: json['idVenta'], // Leer idVenta del JSON
+      idPedido: json['idPedido'] ?? 0,
+      idVenta: json['idVenta'],
       observaciones: json['observaciones'] ?? '',
-      fechaEntrega: DateTime.parse(json['fechaEntrega']),
+      fechaEntrega: parsedDate,
       mensajePersonalizado: json['mensajePersonalizado'] ?? '',
     );
   }
 
   Map<String, dynamic> toJson() {
-    final DateFormat formatter = DateFormat('yyyy-MM-ddTHH:mm:ss'); // Formato ISO 8601
     return {
       'idPedido': idPedido,
-      'idVenta': idVenta, // Incluir idVenta
+      'idVenta': idVenta,
       'observaciones': observaciones,
-      'fechaEntrega': formatter.format(fechaEntrega),
+      'fechaEntrega': fechaEntrega.toIso8601String().split('T')[0], // Solo fecha YYYY-MM-DD
       'mensajePersonalizado': mensajePersonalizado,
     };
   }
 
   Map<String, dynamic> toCreateJson() {
-    final DateFormat formatter = DateFormat('yyyy-MM-ddTHH:mm:ss');
     return {
-      'idVenta': idVenta, // Incluir idVenta para creación
+      'idVenta': idVenta,
       'observaciones': observaciones,
-      'fechaEntrega': formatter.format(fechaEntrega),
+      'fechaEntrega': fechaEntrega.toIso8601String().split('T')[0], // Solo fecha YYYY-MM-DD
       'mensajePersonalizado': mensajePersonalizado,
     };
   }

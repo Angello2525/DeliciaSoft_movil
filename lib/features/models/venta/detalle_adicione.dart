@@ -19,7 +19,7 @@ class DetalleAdicione {
     this.precioUnitario,
     this.subtotal,
   });
-
+  
   factory DetalleAdicione.fromJson(Map<String, dynamic> json) {
     return DetalleAdicione(
       idAdicion: json['idAdicion'],
