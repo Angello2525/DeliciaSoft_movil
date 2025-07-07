@@ -410,44 +410,58 @@ Future<void> logout() async {
     notifyListeners();
   }
 
-  Future<String?> forgotPassword(String email) async {
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
+ Future<String?> forgotPassword(String email) async {
+  _isLoading = true;
+  _error = null;
+  notifyListeners();
 
-    try {
-      print('🔄 Iniciando proceso de forgot password para: $email');
-
-      final response = await ApiService.requestPasswordReset(email);
-      print('🔄 forgotPassword response: ${response.userType}'); // DEBUG
-
-      if (response.success) {
-        // ✅ IMPORTANTE: Guardamos el tipo de usuario que devuelve el backend
-        _tempUserType = response.userType;
-        print('✅ Código enviado exitosamente. UserType guardado: $_tempUserType');
-        return null; // Sin error
-      } else {
-        print('❌ Error en forgot password: ${response.message}');
-        _error = response.message.isNotEmpty ? response.message : 'Error solicitando restablecimiento de contraseña';
+  try {
+    print('🔄 Iniciando proceso de forgot password para: $email');
+    
+    // Si hay un usuario autenticado, usar su userType
+    String? userTypeToUse = _userType;
+    
+    // Si no hay usuario autenticado, buscar el tipo de usuario
+    if (userTypeToUse == null) {
+      userTypeToUse = await checkUserType(email);
+      if (userTypeToUse == null) {
+        _error = 'Usuario no encontrado';
         return _error;
       }
-    } catch (e) {
-      String errorMessage = e.toString();
-      if (errorMessage.contains('Exception:')) {
-        errorMessage = errorMessage.replaceFirst('Exception:', '').trim();
-      }
-
-      _error = errorMessage.isNotEmpty
-          ? errorMessage
-          : 'Error solicitando restablecimiento de contraseña';
-      print('❌ Excepción en forgotPassword: $_error');
-      return _error;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
     }
-  }
+    
+    print('🔄 Usando userType: $userTypeToUse');
 
+    final response = await ApiService.requestPasswordReset(email);
+    print('🔄 forgotPassword response: ${response.userType}'); // DEBUG
+
+    if (response.success) {
+      // ✅ IMPORTANTE: Guardamos el tipo de usuario que devuelve el backend
+      // O usamos el que ya tenemos si el usuario está autenticado
+      _tempUserType = response.userType ?? userTypeToUse;
+      print('✅ Código enviado exitosamente. UserType guardado: $_tempUserType');
+      return null; // Sin error
+    } else {
+      print('❌ Error en forgot password: ${response.message}');
+      _error = response.message.isNotEmpty ? response.message : 'Error solicitando restablecimiento de contraseña';
+      return _error;
+    }
+  } catch (e) {
+    String errorMessage = e.toString();
+    if (errorMessage.contains('Exception:')) {
+      errorMessage = errorMessage.replaceFirst('Exception:', '').trim();
+    }
+
+    _error = errorMessage.isNotEmpty
+        ? errorMessage
+        : 'Error solicitando restablecimiento de contraseña';
+    print('❌ Excepción en forgotPassword: $_error');
+    return _error;
+  } finally {
+    _isLoading = false;
+    notifyListeners();
+  }
+}
 
   Future<String?> resetPassword(String email, String code, String newPassword) async {
     _isLoading = true;
