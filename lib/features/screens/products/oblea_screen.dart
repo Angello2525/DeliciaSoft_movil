@@ -3,6 +3,9 @@ import 'dart:io';
 import '../../models/General_models.dart';
 import '../../services/obleas_api_services.dart';
 import 'Detail/ObleaDetailScreen.dart';
+import '../../services/cart_services.dart'; 
+import 'package:provider/provider.dart'; 
+import '../cart_screen.dart'; 
 
 class ObleaScreen extends StatefulWidget {
   final String categoryTitle;
@@ -103,12 +106,12 @@ class _ObleaScreenState extends State<ObleaScreen> {
   }
 
   void _navigateToDetail(ProductModel producto) {
-  // Navigator.push(
-  //   context,
-  //   MaterialPageRoute(
-  //     builder: (context) => DonasDetailScreen(product: producto),
-  //   ),
-  // );
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => ObleaDetailScreen(product: producto),
+    ),
+  );
 }
 
   Widget _buildCard(ProductModel producto) {
@@ -315,28 +318,52 @@ class _ObleaScreenState extends State<ObleaScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFFFF1F6),
       appBar: AppBar(
-        backgroundColor: Colors.pinkAccent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-        centerTitle: true,
-        title: Text(
-          'Seleccionaste: ${widget.categoryTitle}',
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        title: Text(widget.categoryTitle),
         actions: [
-          if (!isLoading)
-            IconButton(
-              icon: const Icon(Icons.refresh, color: Colors.white),
-              onPressed: _fetchProductos,
-              tooltip: 'Actualizar productos',
-            ),
+          // Ícono del carrito con contador
+          Consumer<CartService>(
+            builder: (context, cartService, child) {
+              return Stack(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.shopping_cart),
+                    onPressed: () {
+                      // Navega a la pantalla del carrito al tocar el icono
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const CartScreen()),
+                      );
+                    },
+                  ),
+                  if (cartService.totalQuantity > 0) // Solo muestra el badge si hay ítems
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 16,
+                          minHeight: 16,
+                        ),
+                        child: Text(
+                          '${cartService.totalQuantity}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+          const SizedBox(width: 10), // Espacio al final del AppBar
         ],
       ),
       body: isLoading

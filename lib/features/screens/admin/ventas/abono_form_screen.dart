@@ -4,6 +4,8 @@ import '../../../services/api_service.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../models/Venta/imagene.dart'; 
 import 'dart:io';
+import 'package:flutter/foundation.dart'; 
+
 class AbonoFormScreen extends StatefulWidget {
   final int idPedido;
   final Abono? abono;  
@@ -62,9 +64,11 @@ class _AbonoFormScreenState extends State<AbonoFormScreen> {
         if (_selectedImage != null) {
           try {
             final uploadedImg = await ApiService.uploadImage(_selectedImage!);
-            finalIdImagen = uploadedImg.idImagen;
-            finalImageUrl = uploadedImg.urlImg; 
-            Imagene? _uploadedImage;   
+           finalIdImagen = uploadedImg.idImagen;
+              finalImageUrl = uploadedImg.urlImg; 
+              setState(() {
+                Future<Imagene>;
+              });
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Imagen cargada exitosamente!')),
             );
@@ -259,16 +263,23 @@ class _AbonoFormScreenState extends State<AbonoFormScreen> {
                             style: const TextStyle(color: Colors.black54),
                           ),
                         ),
-                      if (_selectedImage != null)
+                     if (_selectedImage != null)
                         Container(
                           margin: const EdgeInsets.only(top: 10),
                           height: 100,
-                          child: Image.file(
-                            File(_selectedImage!.path), // Display local file
-                            fit: BoxFit.contain,
-                            errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image),
-                          ),
+                          child: kIsWeb
+                              ? Image.network(
+                                  _selectedImage!.path, // en web el path es un blob URL
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image),
+                                )
+                              : Image.file(
+                                  File(_selectedImage!.path),
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image),
+                                ),
                         )
+
                       else if (_uploadedImage?.urlImg != null && _uploadedImage!.urlImg!.isNotEmpty)
                         Container(
                           margin: const EdgeInsets.only(top: 10),

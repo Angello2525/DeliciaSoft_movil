@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 
 import 'features/providers/auth_provider.dart';
 import 'features/providers/user_provider.dart';
+// Importa tu CartService aquí
+import 'features/services/cart_services.dart';
 
 // Screens y navegación
 import 'features/screens/home_navigation.dart';
@@ -25,6 +27,8 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
+        // ¡Añade tu CartService aquí para que esté disponible en toda la aplicación!
+        ChangeNotifierProvider(create: (_) => CartService()),
       ],
       child: MaterialApp(
         title: 'DeliciaSoft',
@@ -52,7 +56,7 @@ class MyApp extends StatelessWidget {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(25),
               ),
-              padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+              padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
             ),
           ),
           inputDecorationTheme: InputDecorationTheme(
@@ -61,7 +65,7 @@ class MyApp extends StatelessWidget {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: AppColors.primary, width: 2),
+              borderSide: const BorderSide(color: AppColors.primary, width: 2),
             ),
             filled: true,
             fillColor: Colors.white,
