@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../models/product_model.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
 // import '../../../models/relleno_models.dart';
 // import '../../../models/torta_configuration.dart';
 // import '../../../services/relleno_services.dart';
@@ -19,27 +22,11 @@ class _TortaDetailScreenState extends State<TortaDetailScreen> {
 
   List<TortaConfiguration> tortaConfigurations = [];
 
-  final List<String> sabores = [
-    'Chocolate',
-    'Vainilla',
-    'Fresa',
-    'Red Velvet',
-    'Zanahoria',
-    'Tres Leches',
-    'Moka',
-    'Limón'
-  ];
+  List<String> rellenos = [];
+List<String> sabores = [];
 
-  final List<String> rellenos = [
-    'Crema de Chocolate',
-    'Crema de Vainilla',
-    'Dulce de Leche',
-    'Mermelada de Fresa',
-    'Crema de Limón',
-    'Nutella',
-    'Crema de Café',
-    'Sin Relleno'
-  ];
+String? selectedRelleno;
+String? selectedSabor;
 
   final List<String> tiposVenta = ['Por Porciones', 'Por Libra'];
 
@@ -65,10 +52,35 @@ class _TortaDetailScreenState extends State<TortaDetailScreen> {
     'Moka': 18000,
     'Limón': 13000,
   };
+Future<void> fetchRellenos() async {
+  final response = await http.get(Uri.parse('http://deliciasoft.somee.com/api/CatalogoRellenoes'));
+  if (response.statusCode == 200) {
+    final List<dynamic> data = jsonDecode(response.body);
+    setState(() {
+      rellenos = data.map((item) => item['nombre'] as String).toList();
+    });
+  } else {
+    print('Error al cargar rellenos');
+  }
+}
+
+Future<void> fetchSabores() async {
+  final response = await http.get(Uri.parse('http://deliciasoft.somee.com/api/CatalogoSabors'));
+  if (response.statusCode == 200) {
+    final List<dynamic> data = jsonDecode(response.body);
+    setState(() {
+      sabores = data.map((item) => item['nombre'] as String).toList();
+    });
+  } else {
+    print('Error al cargar sabores');
+  }
+}
 
   @override
   void initState() {
     super.initState();
+    fetchRellenos();
+  fetchSabores();
     _initializeConfigurations();
   }
 

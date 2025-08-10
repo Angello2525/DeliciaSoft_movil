@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../../models/product_model.dart';
-
+import '../../../models/saborModels.dart';
+// import '../../../services/sabor_services.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 class PostreDetailScreen extends StatefulWidget {
   final ProductModel product;
 
@@ -14,42 +17,31 @@ class _PostreDetailScreenState extends State<PostreDetailScreen> {
   int quantity = 1;
   
   List<PostreConfiguration> postreConfigurations = [];
-
-  // Sabores disponibles para cada tipo de postre
-  final Map<String, List<String>> saboresDisponibles = {
-    'Gelatina (\$2000)': ['Fresa', 'Uva', 'Limón', 'Naranja', 'Cereza'],
-    'Flan (\$3000)': ['Vainilla', 'Caramelo', 'Chocolate', 'Coco'],
-    'Mousse (\$4000)': ['Chocolate', 'Fresa', 'Maracuyá', 'Limón'],
-    'Tiramisú (\$5000)': ['Tradicional', 'Chocolate', 'Frutos Rojos'],
-    'Cheesecake (\$6000)': ['Frutos Rojos', 'Maracuyá', 'Chocolate', 'Natural'],
-  };
+  List<dynamic> saboresDisponibles = [];
+  bool isLoadingSabores = true;
+  String errorMessage = '';
 
   // Precios de cada tipo de postre
   final Map<String, PostreDefaults> postreDefaults = {
     'Gelatina (\$2000)': PostreDefaults(
       precio: 2000,
       descripcion: 'Gelatina refrescante y deliciosa',
-      saboresDisponibles: ['Fresa', 'Uva', 'Limón', 'Naranja', 'Cereza'],
     ),
     'Flan (\$3000)': PostreDefaults(
       precio: 3000,
       descripcion: 'Flan cremoso con textura suave',
-      saboresDisponibles: ['Vainilla', 'Caramelo', 'Chocolate', 'Coco'],
     ),
     'Mousse (\$4000)': PostreDefaults(
       precio: 4000,
       descripcion: 'Mousse ligero y esponjoso',
-      saboresDisponibles: ['Chocolate', 'Fresa', 'Maracuyá', 'Limón'],
     ),
     'Tiramisú (\$5000)': PostreDefaults(
       precio: 5000,
       descripcion: 'Tiramisú italiano auténtico',
-      saboresDisponibles: ['Tradicional', 'Chocolate', 'Frutos Rojos'],
     ),
     'Cheesecake (\$6000)': PostreDefaults(
       precio: 6000,
       descripcion: 'Cheesecake cremoso con base de galleta',
-      saboresDisponibles: ['Frutos Rojos', 'Maracuyá', 'Chocolate', 'Natural'],
     ),
   };
 
@@ -65,6 +57,7 @@ class _PostreDetailScreenState extends State<PostreDetailScreen> {
   void initState() {
     super.initState();
     _initializeConfigurations();
+    _loadSabores();
   }
 
   void _initializeConfigurations() {
@@ -74,12 +67,59 @@ class _PostreDetailScreenState extends State<PostreDetailScreen> {
     );
   }
 
-  double _getUnitPrice(PostreConfiguration config) {
-    if (config.tipoPostre.isEmpty) return 0;
-    
-    final defaults = postreDefaults[config.tipoPostre];
-    return defaults?.precio ?? 0;
+  Future<void> _loadSabores() async {
+  try {
+    setState(() {
+      isLoadingSabores = true;
+      errorMessage = '';
+    });
+
+    final response = await http.get(Uri.parse('http://deliciasoft.somee.com/api/CatalogoSabors'));
+
+    if (response.statusCode == 200) {
+      final List<dynamic> jsonData = json.decode(response.body);
+      setState(() {
+        saboresDisponibles = jsonData;
+        isLoadingSabores = false;
+      });
+    } else {
+      setState(() {
+        isLoadingSabores = false;
+        errorMessage = 'Error al cargar sabores: Código ${response.statusCode}';
+      });
+    }
+  } catch (e) {
+    setState(() {
+      isLoadingSabores = false;
+      errorMessage = 'Error al cargar sabores: ${e.toString()}';
+    });
   }
+}
+
+
+  double _getUnitPrice(PostreConfiguration config) {
+  if (config.tipoPostre.isEmpty) return 0;
+
+  final defaults = postreDefaults[config.tipoPostre];
+  double basePrice = defaults?.precio ?? 0;
+
+  if (config.idSabor != null) {
+    final sabor = saboresDisponibles.firstWhere(
+      (s) => s["idSabor"] == config.idSabor,
+      orElse: () => {
+        "idSabor": 0,
+        "nombre": "",
+        "precioAdicion": 0,
+        "idInsumos": 0,
+        "estado": true,
+      },
+    );
+    basePrice += (sabor["precioAdicion"] ?? 0).toDouble();
+  }
+
+  return basePrice;
+}
+
 
   double get totalPrice {
     double total = 0;
@@ -97,12 +137,67 @@ class _PostreDetailScreenState extends State<PostreDetailScreen> {
         child: Column(
           children: [
             _buildAppBar(),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: _buildFormContent(),
+            if (isLoadingSabores)
+              const Expanded(
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.pinkAccent),
+                      ),
+                      SizedBox(height: 16),
+                      Text(
+                        'Cargando sabores...',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.pinkAccent,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else if (errorMessage.isNotEmpty)
+              Expanded(
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.error_outline,
+                        color: Colors.red[400],
+                        size: 48,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        errorMessage,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.red[600],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: _loadSabores,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.pinkAccent,
+                          foregroundColor: Colors.white,
+                        ),
+                        child: const Text('Reintentar'),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: _buildFormContent(),
+                ),
               ),
-            ),
           ],
         ),
       ),
@@ -163,180 +258,235 @@ class _PostreDetailScreenState extends State<PostreDetailScreen> {
   }
 
   Widget _buildPostreConfiguration(int index) {
-    if (index >= postreConfigurations.length) return Container();
-    
-    final config = postreConfigurations[index];
-    final defaults = config.tipoPostre.isNotEmpty ? postreDefaults[config.tipoPostre] : null;
-    
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Postre ${index + 1}',
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.pinkAccent,
+  if (index >= postreConfigurations.length) return Container();
+
+  final config = postreConfigurations[index];
+  final defaults = config.tipoPostre.isNotEmpty ? postreDefaults[config.tipoPostre] : null;
+
+  return Card(
+    margin: const EdgeInsets.only(bottom: 16),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    elevation: 2,
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Postre ${index + 1}',
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.pinkAccent,
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          _buildDropdown(
+            'Tipo de Postre',
+            config.tipoPostre,
+            tiposPostre,
+            (val) {
+              setState(() {
+                config.tipoPostre = val;
+                config.idSabor = null;
+              });
+            },
+          ),
+
+          if (defaults != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue[200]!),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Descripción:',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    defaults.descripcion,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Colors.blue,
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 12),
+          ],
 
-            _buildDropdown(
-              'Tipo de Postre',
-              config.tipoPostre,
-              tiposPostre,
-              (val) {
+          if (config.tipoPostre.isNotEmpty && saboresDisponibles.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            DropdownButtonFormField<int>(
+              decoration: const InputDecoration(labelText: 'Sabor'),
+              value: config.idSabor,
+              items: saboresDisponibles.map<DropdownMenuItem<int>>((sabor) {
+                return DropdownMenuItem<int>(
+                  value: sabor['idSabor'],
+                  child: Text('${sabor['nombre']} (+\$${sabor['precioAdicion']})'),
+                );
+              }).toList(),
+              onChanged: (val) {
                 setState(() {
-                  config.tipoPostre = val;
-                  config.sabor = ''; // Reset sabor when changing type
+                  config.idSabor = val;
                 });
               },
             ),
-            
-            // Mostrar descripción del postre
-            if (defaults != null) ...[
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.blue[50],
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.blue[200]!),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Descripción:',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blue,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      defaults.descripcion,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Colors.blue,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-            
-            // Selector de sabor
-            if (config.tipoPostre.isNotEmpty && defaults != null) ...[
-              const SizedBox(height: 12),
-              _buildDropdown(
-                'Sabor',
-                config.sabor,
-                defaults.saboresDisponibles,
-                (val) {
-                  setState(() {
-                    config.sabor = val;
-                  });
-                },
-              ),
-            ],
+          ],
 
-            // Mostrar sabores disponibles
-            if (config.tipoPostre.isNotEmpty && defaults != null) ...[
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.purple[50],
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.purple[200]!),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Sabores disponibles:',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.purple,
-                      ),
+          const SizedBox(height: 12),
+
+          if (config.tipoPostre.isNotEmpty && saboresDisponibles.isNotEmpty) ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.purple[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.purple[200]!),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Sabores disponibles:',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.purple,
                     ),
-                    const SizedBox(height: 4),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 4,
-                      children: defaults.saboresDisponibles.map((sabor) => 
-                        Container(
+                  ),
+                  const SizedBox(height: 4),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: saboresDisponibles.map((sabor) {
+                      final selected = config.idSabor == sabor['idSabor'];
+                      return GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            config.idSabor = sabor['idSabor'];
+                          });
+                        },
+                        child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: config.sabor == sabor ? Colors.purple[200] : Colors.purple[100],
+                            color: selected ? Colors.purple[200] : Colors.purple[100],
                             borderRadius: BorderRadius.circular(12),
-                            border: config.sabor == sabor ? Border.all(color: Colors.purple[400]!, width: 2) : null,
+                            border: selected ? Border.all(color: Colors.purple[400]!, width: 2) : null,
                           ),
-                          child: Text(
-                            sabor,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: config.sabor == sabor ? FontWeight.bold : FontWeight.w500,
-                              color: Colors.purple,
-                            ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                sabor['nombre'],
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: selected ? FontWeight.bold : FontWeight.w500,
+                                  color: Colors.purple,
+                                ),
+                              ),
+                              if ((sabor['precioAdicion'] ?? 0) > 0)
+                                Text(
+                                  '+\$${(sabor['precioAdicion']).toString()}',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.orange[700],
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
-                      ).toList(),
-                    ),
-                  ],
-                ),
+                      );
+                    }).toList(),
+                  ),
+                ],
               ),
-            ],
-            
-            const SizedBox(height: 8),
-            if (config.tipoPostre.isNotEmpty)
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.green[50],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Precio: \$${_getUnitPrice(config).toStringAsFixed(0)}',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green,
-                        fontSize: 16,
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.orange[100],
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Text(
-                        'Precio Fijo',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.orange,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+            ),
           ],
-        ),
+
+          const SizedBox(height: 8),
+
+          if (config.tipoPostre.isNotEmpty)
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.green[50],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Precio Base: \$${(defaults?.precio ?? 0).toStringAsFixed(0)}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: Colors.green,
+                          fontSize: 14,
+                        ),
+                      ),
+                      if (config.idSabor != null)
+                        Text(
+                          'Adición Sabor: +\$${_getSaborPrecioAdicion(config.idSabor!).toStringAsFixed(0)}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: Colors.orange,
+                            fontSize: 12,
+                          ),
+                        ),
+                      Text(
+                        'Total: \$${_getUnitPrice(config).toStringAsFixed(0)}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.orange[100],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Text(
+                      'Precio Variable',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.orange,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
+double _getSaborPrecioAdicion(int idSabor) {
+  final sabor = saboresDisponibles.firstWhere(
+    (s) => s["idSabor"] == idSabor,
+    orElse: () => {"precioAdicion": 0},
+  );
+  return (sabor["precioAdicion"] ?? 0).toDouble();
+}
 
   Widget _buildProductImage() {
     return Card(
@@ -483,6 +633,60 @@ class _PostreDetailScreenState extends State<PostreDetailScreen> {
     );
   }
 
+  Widget _buildSaborDropdown(String label, int? currentValue, List<SaborModel> sabores,
+      Function(int?) onChanged) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: DropdownButtonFormField<int>(
+        value: currentValue,
+        decoration: InputDecoration(
+          labelText: label,
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide.none,
+          ),
+        ),
+        icon: const Icon(Icons.keyboard_arrow_down_rounded),
+        items: sabores.map((sabor) {
+          return DropdownMenuItem<int>(
+            value: sabor.idSabor,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    sabor.nombre,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                if (sabor.precioAdicion > 0)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.orange[100],
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      '+\$${sabor.precioAdicion.toStringAsFixed(0)}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.orange,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          );
+        }).toList(),
+        onChanged: onChanged,
+      ),
+    );
+  }
+
   void _handleAddToCart() {
     List<String> errors = [];
     
@@ -493,7 +697,7 @@ class _PostreDetailScreenState extends State<PostreDetailScreen> {
         errors.add('Postre ${i + 1}: Selecciona un tipo de postre');
       }
       
-      if (config.sabor.isEmpty) {
+      if (config.idSabor == null) {
         errors.add('Postre ${i + 1}: Selecciona un sabor');
       }
     }
@@ -700,19 +904,41 @@ class _PostreDetailScreenState extends State<PostreDetailScreen> {
 
 class PostreConfiguration {
   String tipoPostre = '';
-  String sabor = '';
+  int? idSabor;
   
   PostreConfiguration();
+  
+  // Método para obtener el nombre del sabor
+  String getSaborNombre(List<SaborModel> sabores) {
+    if (idSabor == null) return '';
+    
+    try {
+      final sabor = sabores.firstWhere((s) => s.idSabor == idSabor);
+      return sabor.nombre;
+    } catch (e) {
+      return '';
+    }
+  }
+  
+  // Método para obtener el precio adicional del sabor
+  double getSaborPrecioAdicion(List<SaborModel> sabores) {
+    if (idSabor == null) return 0.0;
+    
+    try {
+      final sabor = sabores.firstWhere((s) => s.idSabor == idSabor);
+      return sabor.precioAdicion;
+    } catch (e) {
+      return 0.0;
+    }
+  }
 }
 
 class PostreDefaults {
   final double precio;
   final String descripcion;
-  final List<String> saboresDisponibles;
   
   PostreDefaults({
     required this.precio,
     required this.descripcion,
-    required this.saboresDisponibles,
   });
 }

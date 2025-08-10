@@ -575,6 +575,9 @@
 //   }
 // }
 
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../models/General_models.dart';
@@ -613,11 +616,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   };
 
   @override
-  void initState() {
-    super.initState();
-    _initializeConfigurations();
-    _cargarDatosQuemados();
-  }
+void initState() {
+  super.initState();
+  _initializeConfigurations();
+  _cargarAdicionesDesdeApi(); // ← Llamamos la API
+  _cargarDatosQuemados(); // ← Mantiene salsas quemadas
+}
+
 
   void _initializeConfigurations() {
     productConfigurations = List.generate(
@@ -627,24 +632,36 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   }
 
   void _cargarDatosQuemados() {
-    // Datos quemados simples
+  // Solo salsas quemadas
+  setState(() {
+    salsas = [
+      'Mora',
+      'Chocolate',
+      'Lecherita',
+      'Fresa',
+    ];
+  });
+}
+Future<void> _cargarAdicionesDesdeApi() async {
+  try {
+    final response = await http.get(Uri.parse('http://deliciasoft.somee.com/api/CatalogoAdiciones'));
+    if (response.statusCode == 200) {
+      final List<dynamic> data = json.decode(response.body);
+      final List<String> nombres = data
+          .where((item) => item['estado'] == true)
+          .map<String>((item) => item['nombre'].toString())
+          .toList();
+
+      setState(() {
+        adiciones = nombres;
+        toppings = nombres; // ← Como son iguales, se cargan igual
+      });
+    } else {
+      throw Exception('Error al cargar adiciones');
+    }
+  } catch (e) {
+    // Backup si falla la API
     setState(() {
-      toppings = [
-        'Maní',
-        'M&M',
-        'Oreo',
-        'Chips de chocolate',
-        'Granola',
-        'Grajeas',
-      ];
-
-      salsas = [
-        'Mora',
-        'Chocolate',
-        'Lecherita',
-        'Fresa',
-      ];
-
       adiciones = [
         'Maní',
         'M&M',
@@ -653,8 +670,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         'Granola',
         'Grajeas',
       ];
+      toppings = adiciones;
     });
   }
+}
+
 
   @override
   Widget build(BuildContext context) {

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '../../../models/product_model.dart';
 
 class DonasDetailScreen extends StatefulWidget {
@@ -12,7 +14,6 @@ class DonasDetailScreen extends StatefulWidget {
 
 class _DonasDetailScreenState extends State<DonasDetailScreen> {
   int cantidadCombos = 1;
-
   final List<DonaComboConfiguration> donasConfig = [];
 
   final List<String> tiposCombo = [
@@ -27,16 +28,7 @@ class _DonasDetailScreenState extends State<DonasDetailScreen> {
     'Combo 20 mini donas (\$22000)': DonaComboDefaults(precio: 22000, maxToppings: 7),
   };
 
-  final List<String> toppingsDisponibles = [
-    'Chispitas',
-    'Galleta triturada',
-    'Arequipe',
-    'Oreo',
-    'Maní',
-    'Coco rallado',
-    'Grajeas',
-  ];
-
+  List<String> toppingsDisponibles = [];
   final List<String> salsasDisponibles = [
     'Fresa',
     'Mora',
@@ -46,10 +38,13 @@ class _DonasDetailScreenState extends State<DonasDetailScreen> {
     'Chocolate derretido',
   ];
 
+  bool cargandoToppings = false;
+
   @override
   void initState() {
     super.initState();
     _inicializarCombos();
+    _cargarToppingsDesdeAPI();
   }
 
   void _inicializarCombos() {
@@ -59,32 +54,31 @@ class _DonasDetailScreenState extends State<DonasDetailScreen> {
     }
   }
 
-  double _precioTotal() {
-    double total = 0;
-    for (var config in donasConfig) {
-      final defaults = comboDefaults[config.tipoCombo];
-      if (defaults != null) {
-        total += defaults.precio;
+  Future<void> _cargarToppingsDesdeAPI() async {
+    setState(() => cargandoToppings = true);
+    try {
+      final resp = await http.get(Uri.parse('http://deliciasoft.somee.com/api/CatalogoAdiciones'));
+      if (resp.statusCode == 200) {
+        final List<dynamic> data = json.decode(resp.body);
+        toppingsDisponibles = data
+            .where((e) => e['estado'] == true)
+            .map<String>((e) => e['nombre'].toString())
+            .toList();
+      } else {
+        print('Error al cargar toppings: ${resp.statusCode}');
       }
+    } catch (e) {
+      print('Error al conectar toppings: $e');
+    } finally {
+      setState(() => cargandoToppings = false);
     }
-    return total;
   }
 
-  Widget _buildProductImage() {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 4,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: Image.network(
-          widget.product.imageUrl,
-          height: 200,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) =>
-              const Icon(Icons.donut_small, size: 100, color: Colors.pinkAccent),
-        ),
-      ),
-    );
+  double _precioTotal() {
+    return donasConfig.fold<double>(
+        0,
+        (prev, cfg) =>
+            prev + (comboDefaults[cfg.tipoCombo]?.precio ?? 0));
   }
 
   @override
@@ -95,6 +89,11 @@ class _DonasDetailScreenState extends State<DonasDetailScreen> {
         child: Column(
           children: [
             _buildAppBar(),
+            if (cargandoToppings)
+              const Padding(
+                padding: EdgeInsets.all(12),
+                child: CircularProgressIndicator(color: Colors.pinkAccent),
+              ),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
@@ -103,18 +102,14 @@ class _DonasDetailScreenState extends State<DonasDetailScreen> {
                   children: [
                     _buildProductImage(),
                     const SizedBox(height: 12),
-                    Text(
-                      widget.product.description,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+                    Text(widget.product.description,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                            fontSize: 15, fontWeight: FontWeight.w500)),
                     const SizedBox(height: 20),
                     _buildComboQuantitySelector(),
                     const SizedBox(height: 20),
-                    ...List.generate(cantidadCombos, (index) => _buildDonaCombo(index)),
+                    ...List.generate(cantidadCombos, (i) => _buildDonaCombo(i)),
                     const SizedBox(height: 12),
                     _buildTotalResumen(),
                     const SizedBox(height: 20),
@@ -129,146 +124,116 @@ class _DonasDetailScreenState extends State<DonasDetailScreen> {
     );
   }
 
-
-  Widget _buildAppBar() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      color: Colors.pinkAccent,
-      child: Row(
-        children: [
-          IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
-            onPressed: () => Navigator.pop(context),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              widget.product.title,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
+  Widget _buildAppBar() => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        color: Colors.pinkAccent,
+        child: Row(
+          children: [
+            IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () => Navigator.pop(context)),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(widget.product.title,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white)),
             ),
-          ),
-          const SizedBox(width: 48),
-        ],
-      ),
-    );
-  }
-    Widget _buildDonaCombo(int index) {
-    if (index >= donasConfig.length) return Container();
+            const SizedBox(width: 48),
+          ],
+        ),
+      );
 
+  Widget _buildProductImage() => Card(
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        elevation: 4,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Image.network(widget.product.imageUrl,
+              height: 200, fit: BoxFit.cover, errorBuilder: (_, __, ___) {
+            return const Icon(Icons.donut_small,
+                size: 100, color: Colors.pinkAccent);
+          }),
+        ),
+      );
+
+  Widget _buildDonaCombo(int index) {
     final config = donasConfig[index];
     final defaults = comboDefaults[config.tipoCombo];
-
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       elevation: 2,
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Combo ${index + 1}',
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('Combo ${index + 1}',
               style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.pinkAccent,
-              ),
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              value: config.tipoCombo.isEmpty ? null : config.tipoCombo,
-              decoration: _dropdownDecoration('Tipo de combo'),
-              items: tiposCombo
-                  .map((item) => DropdownMenuItem(value: item, child: Text(item)))
-                  .toList(),
-              onChanged: (val) {
-                if (val != null) {
-                  setState(() {
-                    config.tipoCombo = val;
-                    config.toppingsSeleccionados.clear();
-                    config.salsaSeleccionada = '';
-                  });
-                }
-              },
-            ),
-            const SizedBox(height: 12),
-            if (defaults != null) _buildToppingsSelector(config, defaults),
-            const SizedBox(height: 16),
-            _buildSalsaSelector(config),
-            const SizedBox(height: 12),
-            if (defaults != null)
-              Row(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.pinkAccent)),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            decoration: _dropdownDecoration('Tipo de combo'),
+            value: config.tipoCombo.isEmpty ? null : config.tipoCombo,
+            items: tiposCombo
+                .map((item) => DropdownMenuItem(value: item, child: Text(item)))
+                .toList(),
+            onChanged: (val) {
+              config.tipoCombo = val!;
+              config.toppingsSeleccionados.clear();
+              config.salsaSeleccionada = '';
+              setState(() {});
+            },
+          ),
+          const SizedBox(height: 12),
+          if (defaults != null) _buildToppingsSelector(config, defaults),
+          const SizedBox(height: 16),
+          _buildSalsaSelector(config),
+          const SizedBox(height: 12),
+          if (defaults != null)
+            Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Precio: \$${defaults.precio.toStringAsFixed(0)}',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: Colors.green,
-                    ),
-                  ),
-                  Text(
-                    '${defaults.maxToppings} toppings máx.',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w500,
-                      color: Colors.grey,
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
-          ],
-        ),
+                  Text('Precio: \$${defaults.precio.toStringAsFixed(0)}',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: Colors.green)),
+                  Text('${defaults.maxToppings} toppings máx.',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w500,
+                          color: Colors.grey,
+                          fontSize: 14)),
+                ])
+        ]),
       ),
     );
   }
 
-  InputDecoration _dropdownDecoration(String label) {
-    return InputDecoration(
-      labelText: label,
-      filled: true,
-      fillColor: Colors.white,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide.none,
-      ),
-    );
-  }
-    Widget _buildToppingsSelector(DonaComboConfiguration config, DonaComboDefaults defaults) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Selecciona tus toppings:',
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.pinkAccent),
-        ),
+  Widget _buildToppingsSelector(DonaComboConfiguration cfg, DonaComboDefaults df) =>
+      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Text('Selecciona tus toppings:',
+            style:
+                TextStyle(fontWeight: FontWeight.bold, color: Colors.pinkAccent)),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
-          children: toppingsDisponibles.map((topping) {
-            final selected = config.toppingsSeleccionados.contains(topping);
-            final limiteAlcanzado = config.toppingsSeleccionados.length >= defaults.maxToppings && !selected;
-
+          children: toppingsDisponibles.map((t) {
+            final sel = cfg.toppingsSeleccionados.contains(t);
+            final lim = cfg.toppingsSeleccionados.length >= df.maxToppings && !sel;
             return FilterChip(
-              selected: selected,
-              label: Text(topping),
-              onSelected: limiteAlcanzado
+              selected: sel,
+              label: Text(t),
+              onSelected: lim
                   ? null
-                  : (val) {
+                  : (v) {
                       setState(() {
-                        if (val) {
-                          config.toppingsSeleccionados.add(topping);
-                        } else {
-                          config.toppingsSeleccionados.remove(topping);
-                        }
+                        if (v) cfg.toppingsSeleccionados.add(t);
+                        else cfg.toppingsSeleccionados.remove(t);
                       });
                     },
               selectedColor: Colors.pinkAccent.withOpacity(0.2),
@@ -277,49 +242,48 @@ class _DonasDetailScreenState extends State<DonasDetailScreen> {
             );
           }).toList(),
         ),
-      ],
-    );
-  }
+      ]);
 
-  Widget _buildSalsaSelector(DonaComboConfiguration config) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          '¿Deseas alguna salsa o crema?',
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.pinkAccent),
-        ),
-        const SizedBox(height: 6),
-        DropdownButtonFormField<String>(
-          value: config.salsaSeleccionada.isEmpty ? null : config.salsaSeleccionada,
-          decoration: _dropdownDecoration('Selecciona una opción'),
-          items: salsasDisponibles
-              .map((s) => DropdownMenuItem(value: s, child: Text(s)))
-              .toList(),
-          onChanged: (val) {
-            if (val != null) {
-              setState(() {
-                config.salsaSeleccionada = val;
-              });
-            }
-          },
-        ),
-      ],
-    );
-  }
+  Widget _buildSalsaSelector(DonaComboConfiguration cfg) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('¿Deseas alguna salsa o crema?',
+              style:
+                  TextStyle(fontWeight: FontWeight.bold, color: Colors.pinkAccent)),
+          const SizedBox(height: 6),
+          DropdownButtonFormField<String>(
+            decoration: _dropdownDecoration('Selecciona una opción'),
+            value:
+                cfg.salsaSeleccionada.isEmpty ? null : cfg.salsaSeleccionada,
+            items: salsasDisponibles
+                .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                .toList(),
+            onChanged: (v) {
+              cfg.salsaSeleccionada = v!;
+              setState(() {});
+            },
+          ),
+        ],
+      );
 
-  Widget _buildComboQuantitySelector() {
-    return Column(
-      children: [
-        const Text(
-          '¿Cuántos combos quieres?',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+  InputDecoration _dropdownDecoration(String label) => InputDecoration(
+        labelText: label,
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none,
         ),
+      );
+
+  Widget _buildComboQuantitySelector() => Column(children: [
+        const Text('¿Cuántos combos quieres?',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            IconButton(
+        Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          IconButton(
               onPressed: () {
                 if (cantidadCombos > 1) {
                   setState(() {
@@ -328,120 +292,93 @@ class _DonasDetailScreenState extends State<DonasDetailScreen> {
                   });
                 }
               },
-              icon: const Icon(Icons.remove_circle_outline),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              decoration: BoxDecoration(
-                color: Colors.pink[100],
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                '$cantidadCombos ${cantidadCombos == 1 ? 'Combo' : 'Combos'}',
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-            ),
-            IconButton(
+              icon: const Icon(Icons.remove_circle_outline)),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            decoration: BoxDecoration(
+                color: Colors.pink[100], borderRadius: BorderRadius.circular(12)),
+            child: Text('$cantidadCombos ${cantidadCombos == 1 ? 'Combo' : 'Combos'}',
+                style:
+                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          ),
+          IconButton(
               onPressed: () {
                 setState(() {
                   cantidadCombos++;
                   donasConfig.add(DonaComboConfiguration());
                 });
               },
-              icon: const Icon(Icons.add_circle_outline),
-            ),
+              icon: const Icon(Icons.add_circle_outline)),
+        ])
+      ]);
+
+  Widget _buildTotalResumen() => Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: const [
+            BoxShadow(
+                color: Color.fromARGB(20, 0, 0, 0),
+                blurRadius: 6,
+                offset: Offset(0, 3)),
           ],
         ),
-      ],
-    );
-  }
+        child: Text('Total: \$${_precioTotal().toStringAsFixed(0)}',
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+      );
 
-  Widget _buildTotalResumen() {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: const [
-          BoxShadow(
-            color: Color.fromARGB(20, 0, 0, 0),
-            blurRadius: 6,
-            offset: Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Text(
-        'Total: \$${_precioTotal().toStringAsFixed(0)}',
-        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-      ),
-    );
-  }
-
-  Widget _buildAddToCartBar() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      decoration: BoxDecoration(
-        color: Colors.pink[100],
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            'Total: \$${_precioTotal().toStringAsFixed(0)}',
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-          ),
+  Widget _buildAddToCartBar() => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        decoration: BoxDecoration(
+            color: Colors.pink[100], borderRadius: BorderRadius.circular(12)),
+        child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          Text('Total: \$${_precioTotal().toStringAsFixed(0)}',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           GestureDetector(
             onTap: _handleAddToCart,
             child: Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.pinkAccent,
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: const [
-                  BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 3)),
-                ],
-              ),
-              child: const Icon(Icons.add_shopping_cart_rounded, color: Colors.white, size: 26),
+                  color: Colors.pinkAccent,
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: const [
+                    BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 3))
+                  ]),
+              child: const Icon(Icons.add_shopping_cart_rounded,
+                  color: Colors.white, size: 26),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-    void _handleAddToCart() {
-    List<String> errores = [];
+          )
+        ]),
+      );
 
+  void _handleAddToCart() {
+    final errores = <String>[];
     for (int i = 0; i < donasConfig.length; i++) {
-      final config = donasConfig[i];
-      if (config.tipoCombo.isEmpty) {
+      if (donasConfig[i].tipoCombo.isEmpty) {
         errores.add('Combo ${i + 1}: Debes elegir un tipo de combo.');
       }
     }
-
     if (errores.isNotEmpty) {
       _showValidationAlert(errores);
-      return;
+    } else {
+      _showSuccessAlert();
     }
-
-    _showSuccessAlert();
   }
 
   void _showValidationAlert(List<String> errores) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (_) => AlertDialog(
         title: const Text('Campos Requeridos'),
         content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: errores.map((e) => Text('• $e')).toList(),
-        ),
+            mainAxisSize: MainAxisSize.min,
+            children: errores.map((e) => Text('• $e')).toList()),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Entendido'),
-          )
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Entendido'))
         ],
       ),
     );
@@ -450,36 +387,29 @@ class _DonasDetailScreenState extends State<DonasDetailScreen> {
   void _showSuccessAlert() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (_) => AlertDialog(
         title: const Text('¡Éxito!'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Se ${cantidadCombos == 1 ? 'ha' : 'han'} añadido $cantidadCombos ${cantidadCombos == 1 ? 'combo' : 'combos'} al carrito.',
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Total: \$${_precioTotal().toStringAsFixed(0)}',
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          Text(
+              'Se ${cantidadCombos == 1 ? 'ha' : 'han'} añadido $cantidadCombos ${cantidadCombos == 1 ? 'combo' : 'combos'} al carrito.'),
+          const SizedBox(height: 8),
+          Text('Total: \$${_precioTotal().toStringAsFixed(0)}',
+              style: const TextStyle(fontWeight: FontWeight.bold)),
+        ]),
         actions: [
           TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _resetFormulario();
-            },
-            child: const Text('Seguir comprando'),
-          ),
+              onPressed: () {
+                Navigator.pop(context);
+                _resetFormulario();
+              },
+              child: const Text('Seguir comprando')),
           TextButton(
             onPressed: () {
               Navigator.pop(context);
               Navigator.pop(context);
             },
             child: const Text('Volver al inicio'),
-          ),
+          )
         ],
       ),
     );
@@ -488,8 +418,9 @@ class _DonasDetailScreenState extends State<DonasDetailScreen> {
   void _resetFormulario() {
     setState(() {
       cantidadCombos = 1;
-      donasConfig.clear();
-      donasConfig.add(DonaComboConfiguration());
+      donasConfig
+        ..clear()
+        ..add(DonaComboConfiguration());
     });
   }
 }
@@ -498,16 +429,11 @@ class DonaComboDefaults {
   final double precio;
   final int maxToppings;
 
-  DonaComboDefaults({
-    required this.precio,
-    required this.maxToppings,
-  });
+  DonaComboDefaults({required this.precio, required this.maxToppings});
 }
 
 class DonaComboConfiguration {
   String tipoCombo = '';
   List<String> toppingsSeleccionados = [];
   String salsaSeleccionada = '';
-
-  DonaComboConfiguration();
 }

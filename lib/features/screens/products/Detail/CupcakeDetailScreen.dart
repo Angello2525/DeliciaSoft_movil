@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../models/product_model.dart';
-
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 class CupcakeDetailScreen extends StatefulWidget {
   final ProductModel product;
 
@@ -16,22 +17,9 @@ class _CupcakeDetailScreenState extends State<CupcakeDetailScreen> {
   String cobertura = '';
   int cantidad = 1;
 
-  final List<String> rellenosDisponibles = [
-    'Arequipe',
-    'Nutella',
-    'Fresa',
-    'Frambuesa',
-    'Limón',
-    'Vainilla',
-  ];
+  List<String> rellenosDisponibles = [];
+List<String> toppingsDisponibles = [];
 
-  final List<String> toppingsDisponibles = [
-    'Chispitas',
-    'Galleta triturada',
-    'Mini Oreo',
-    'Confites',
-    'Coco rallado',
-  ];
 
   final List<String> coberturasDisponibles = [
     'Crema de leche',
@@ -49,6 +37,34 @@ class _CupcakeDetailScreenState extends State<CupcakeDetailScreen> {
       cantidad = 1;
     });
   }
+
+  @override
+void initState() {
+  super.initState();
+  _cargarDatosDesdeAPI(); // 👈 Llamar la carga de API aquí
+}
+
+
+Future<void> _cargarDatosDesdeAPI() async {
+  try {
+    final rellenoResponse = await http.get(Uri.parse('http://deliciasoft.somee.com/api/CatalogoRellenoes'));
+    final toppingResponse = await http.get(Uri.parse('http://deliciasoft.somee.com/api/CatalogoAdiciones'));
+
+    if (rellenoResponse.statusCode == 200 && toppingResponse.statusCode == 200) {
+      final List<dynamic> rellenoData = json.decode(rellenoResponse.body);
+      final List<dynamic> toppingData = json.decode(toppingResponse.body);
+
+      setState(() {
+        rellenosDisponibles = rellenoData.map<String>((e) => e['nombre'].toString()).toList();
+        toppingsDisponibles = toppingData.map<String>((e) => e['nombre'].toString()).toList();
+      });
+    } else {
+      debugPrint('Error en respuestas: ${rellenoResponse.statusCode} / ${toppingResponse.statusCode}');
+    }
+  } catch (e) {
+    debugPrint('Error al cargar datos desde API: $e');
+  }
+}
 
 
 
