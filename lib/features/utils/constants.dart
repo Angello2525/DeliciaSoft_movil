@@ -1,6 +1,6 @@
 class Constants {
   // API Configuration
-  static const String baseUrl = 'http://deliciasoft.somee.com/api';
+  static const String baseUrl = 'https://deliciasoft-backend.onrender.com/api';
 
   // API Endpoints
   static const String loginClientEndpoint = '$baseUrl/Clientes';
