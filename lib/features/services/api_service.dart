@@ -1336,18 +1336,6 @@ static Future<ApiResponse<Usuario>> getCurrentAdminProfile(String token, String 
   }
 }
 
-  var response = await request.send();
-
-  if (response.statusCode == 201) {
-    final responseBody = await response.stream.bytesToString();
-    final Map<String, dynamic> jsonResponse = json.decode(responseBody);
-    return Imagene.fromJson(jsonResponse);
-  } else {
-    final errorBody = await response.stream.bytesToString();
-    throw Exception('Failed to upload image: ${response.statusCode} - $errorBody');
-  }
-}
-
   static Future<List<Abono>> getAbonosByPedidoId(int idPedido) async {
     final response = await http.get(Uri.parse('$__baseUrl/Abonos/ByPedido/$idPedido'));
     _handleHttpError(response);
@@ -1464,6 +1452,4 @@ static Future<DetalleVenta> createDetalleVenta(DetalleVenta detalleVenta) async 
     throw Exception('Failed to create detalleVenta: ${response.statusCode} - ${response.body}');
   }
 }
-
-  
 }
