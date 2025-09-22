@@ -10,12 +10,19 @@ class Category {
   });
 
   factory Category.fromJson(Map<String, dynamic> json) {
-    final imagenObj = json['imagen'];
+    // El objeto 'imagenes' puede venir null
+    final imagenObj = json['imagenes'];
+
     return Category(
-      nombreCategoria: json['nombreCategoria'] ?? 'Sin nombre',
-      idImagen: json['idImagen'], // puede ser null
-      urlImg: imagenObj != null && imagenObj['urlImg'] != null
-          ? imagenObj['urlImg'] as String
+      // OJO: aquí usamos 'nombrecategoria' porque así viene en el JSON real
+      nombreCategoria: json['nombrecategoria'] ?? 'Sin nombre',
+
+      // El id de la imagen puede venir en 'idimagencat' o dentro del objeto 'imagenes'
+      idImagen: json['idimagencat'] ?? (imagenObj != null ? imagenObj['idimagen'] : null),
+
+      // El url de la imagen viene dentro de 'imagenes' como 'urlimg'
+      urlImg: (imagenObj != null && imagenObj['urlimg'] != null)
+          ? imagenObj['urlimg'] as String
           : null,
     );
   }

@@ -3,16 +3,30 @@ import 'package:http/http.dart' as http;
 import '../models/category.dart';
 
 class CategoriaApiService {
-  final String baseUrl = 'http://deliciasoft.somee.com/api';
+  // URL completa del endpoint de categorías
+  static const String _baseUrl =
+      'https://deliciasoft-backend.onrender.com/api/categorias-productos';
 
   Future<List<Category>> obtenerCategorias() async {
-    final response = await http.get(Uri.parse('$baseUrl/CategoriaProductoes'));
+    final uri = Uri.parse(_baseUrl); // usamos _baseUrl
+    final response = await http.get(uri);
 
     if (response.statusCode == 200) {
-      final List<dynamic> data = jsonDecode(response.body);
-      return data.map((json) => Category.fromJson(json)).toList();
+      final body = jsonDecode(response.body);
+
+      if (body is List) {
+        return body.map((item) => Category.fromJson(item)).toList();
+      }
+
+      if (body is Map && body.containsKey('data')) {
+        final List<dynamic> data = body['data'];
+        return data.map((item) => Category.fromJson(item)).toList();
+      }
+
+      throw Exception('Formato de respuesta inesperado');
     } else {
-      throw Exception('No se pudo cargar las categorías');
+      throw Exception(
+          'No se pudo cargar las categorías. Código: ${response.statusCode}');
     }
   }
 }
