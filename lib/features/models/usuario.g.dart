@@ -13,7 +13,7 @@ Usuario _$UsuarioFromJson(Map<String, dynamic> json) => Usuario(
   nombre: json['nombre'] as String? ?? '',
   apellido: json['apellido'] as String? ?? '',
   correo: json['correo'] as String? ?? '',
-  hashContrasena: json['hashContraseña'] as String?,
+  hashContrasena: json['hashContrasena'] as String?,
   idRol: (json['idRol'] as num?)?.toInt() ?? 2,
   estado: json['estado'] as bool? ?? true,
   idRolNavigation:
@@ -29,7 +29,7 @@ Map<String, dynamic> _$UsuarioToJson(Usuario instance) => <String, dynamic>{
   'nombre': instance.nombre,
   'apellido': instance.apellido,
   'correo': instance.correo,
-  'hashContraseña': instance.hashContrasena,
+  'hashContrasena': instance.hashContrasena,
   'idRol': instance.idRol,
   'estado': instance.estado,
   'idRolNavigation': instance.idRolNavigation,

@@ -146,15 +146,17 @@ Future<String?> verifyCodeAndLogin(
         final userDataMap = response.user as Map<String, dynamic>?;
         if (userDataMap != null) {
           if (_userType == Constants.adminType) {
+            // ✅ SOLO PARA ADMIN: normalizar campos
             final completeUserData = {
-              'idUsuario': userDataMap['idUsuario'] ?? 0,
+              'idUsuario': userDataMap['idUsuario'] ?? userDataMap['idusuario'] ?? 0,
               'nombre': userDataMap['nombre'] ?? '',
               'apellido': userDataMap['apellido'] ?? '',
               'correo': userDataMap['correo'] ?? '',
-              'tipoDocumento': userDataMap['tipoDocumento'] ?? '',
-              'documento': userDataMap['documento']?.toString() ?? '',
+              'tipoDocumento': userDataMap['tipoDocumento'] ?? userDataMap['tipodocumento'] ?? '',
+              'documento': userDataMap['documento'] ?? 0,
               'estado': userDataMap['estado'] ?? true,
-              'contrasena': '',
+              'hashContrasena': userDataMap['hashContrasena'] ?? userDataMap['hashcontrasena'] ?? '',
+              'idRol': userDataMap['idRol'] ?? userDataMap['idrol'] ?? 2,
             };
 
             if (completeUserData['idUsuario'] == 0) {
@@ -168,7 +170,7 @@ Future<String?> verifyCodeAndLogin(
             await StorageService.saveUserData(_currentUser!.toJson());
 
           } else if (_userType == Constants.clientType) {
-            // NO toques hashContraseña, deja el que viene del backend
+            // ✅ PARA CLIENTE: DEJAR COMO ESTABA (sin tocar hashContrasena)
             final completeClientData = Map<String, dynamic>.from(userDataMap);
 
             if (completeClientData['idCliente'] == null) {
@@ -197,7 +199,7 @@ Future<String?> verifyCodeAndLogin(
 
       notifyListeners();
       _isLoading = false;
-      return _error; // null si todo fue bien
+      return _error;
     } else {
       _error = response.message.isNotEmpty ? response.message : 'Error en la verificación';
       notifyListeners();
@@ -230,8 +232,21 @@ Future<void> initialize() async {
       if (authResponse.user != null && _userType != null && _token != null) {
         final userDataMap = authResponse.user as Map<String, dynamic>;
         if (_userType == Constants.adminType) {
-          _currentUser = Usuario.fromJson(userDataMap);
+          // ✅ SOLO PARA ADMIN: normalizar campos
+          final completeUserData = {
+            'idUsuario': userDataMap['idUsuario'] ?? userDataMap['idusuario'] ?? 0,
+            'nombre': userDataMap['nombre'] ?? '',
+            'apellido': userDataMap['apellido'] ?? '',
+            'correo': userDataMap['correo'] ?? '',
+            'tipoDocumento': userDataMap['tipoDocumento'] ?? userDataMap['tipodocumento'] ?? '',
+            'documento': userDataMap['documento'] ?? 0,
+            'estado': userDataMap['estado'] ?? true,
+            'hashContrasena': userDataMap['hashContrasena'] ?? userDataMap['hashcontrasena'] ?? '',
+            'idRol': userDataMap['idRol'] ?? userDataMap['idrol'] ?? 2,
+          };
+          _currentUser = Usuario.fromJson(completeUserData);
         } else if (_userType == Constants.clientType) {
+          // ✅ PARA CLIENTE: DEJAR COMO ESTABA
           _currentClient = Cliente.fromJson(userDataMap);
         }
       } else {
@@ -254,7 +269,6 @@ Future<void> initialize() async {
   }
 }
 
-
 Future<String?> login(String email, String password, String userType) async {
   _isLoading = true;
   _error = null;
@@ -273,15 +287,17 @@ Future<String?> login(String email, String password, String userType) async {
         if (response.user != null) {
           final userDataMap = response.user as Map<String, dynamic>;
           if (_userType == Constants.adminType) {
+            // ✅ SOLO PARA ADMIN: normalizar campos
             final completeUserData = {
-              'idUsuario': userDataMap['idUsuario'] ?? 0,
+              'idUsuario': userDataMap['idUsuario'] ?? userDataMap['idusuario'] ?? 0,
               'nombre': userDataMap['nombre'] ?? '',
               'apellido': userDataMap['apellido'] ?? '',
               'correo': userDataMap['correo'] ?? '',
-              'tipoDocumento': userDataMap['tipoDocumento'] ?? '',
-              'documento': userDataMap['documento']?.toString() ?? '',
+              'tipoDocumento': userDataMap['tipoDocumento'] ?? userDataMap['tipodocumento'] ?? '',
+              'documento': userDataMap['documento'] ?? 0,
               'estado': userDataMap['estado'] ?? true,
-              'contrasena': '',
+              'hashContrasena': userDataMap['hashContrasena'] ?? userDataMap['hashcontrasena'] ?? '',
+              'idRol': userDataMap['idRol'] ?? userDataMap['idrol'] ?? 2,
             };
 
             if (completeUserData['idUsuario'] == 0) {
@@ -295,7 +311,7 @@ Future<String?> login(String email, String password, String userType) async {
             await StorageService.saveUserData(_currentUser!.toJson());
 
           } else if (_userType == Constants.clientType) {
-            // NO toques hashContraseña, deja el que viene del backend
+            // ✅ PARA CLIENTE: DEJAR EXACTAMENTE COMO ESTABA
             final completeClientData = Map<String, dynamic>.from(userDataMap);
 
             if (completeClientData['idCliente'] == null) {
@@ -323,7 +339,7 @@ Future<String?> login(String email, String password, String userType) async {
       }
 
       notifyListeners();
-      return _error; // null si todo fue bien
+      return _error;
     } else {
       _error = response.message.isNotEmpty ? response.message : 'Error en login';
       notifyListeners();
