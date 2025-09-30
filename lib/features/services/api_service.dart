@@ -269,9 +269,8 @@ static Future<ApiResponse<dynamic>> verifyCodeAndLogin(String email, String pass
         'correo': email,
         'password': password,
         'userType': userType == 'usuario' ? 'admin' : userType.toLowerCase(),
-        'code': code,
+        'codigo': code,  // ✅ CAMBIO CRÍTICO: de 'code' a 'codigo'
       };
-
 
     final response = await http.post(
       Uri.parse(Constants.verifyCodeAndLoginEndpoint),
@@ -756,8 +755,8 @@ static Future<PasswordResetResponse> resetPassword(
       body: jsonEncode({
         'correo': email,
         'userType': userType,
-        'newPassword': newPassword,
-        'code': verificationCode,
+        'nuevaPassword': newPassword,  // ✅ Verificar nombre en backend
+        'codigo': verificationCode,  // ✅ CORRECTO
       }),
     );
 
@@ -1452,4 +1451,7 @@ static Future<DetalleVenta> createDetalleVenta(DetalleVenta detalleVenta) async 
     throw Exception('Failed to create detalleVenta: ${response.statusCode} - ${response.body}');
   }
 }
+
+  
 }
+

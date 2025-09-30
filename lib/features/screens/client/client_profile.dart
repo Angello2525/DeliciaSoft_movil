@@ -604,59 +604,79 @@ class _ClientProfileState extends State<ClientProfile> {
     );
   }
 
-  Widget _buildDocumentTypeDropdown() {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.pink.withOpacity(0.05),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: DropdownButtonFormField<String>(
-        value: _selectedDocumentType?.isNotEmpty == true ? _selectedDocumentType : null,
-        decoration: InputDecoration(
-          labelText: 'Tipo de Documento',
-          prefixIcon: Icon(Icons.assignment_outlined, color: Colors.pink[400]),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.pink[200]!),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.pink[200]!),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.pink[400]!, width: 2),
-          ),
-          filled: true,
-          fillColor: Colors.white,
-          labelStyle: TextStyle(color: Colors.pink[600]),
-        ),
-        items: ['Cédula de Ciudadanía', 'Cédula de Extranjería', 'Pasaporte', 'Tarjeta de Identidad']
-            .map((type) => DropdownMenuItem(value: type, child: Text(type)))
-            .toList(),
-        onChanged: (value) {
-          setState(() {
-            _selectedDocumentType = value;
-            _documentTypeController.text = value ?? '';
-          });
-        },
-        validator: (value) {
-          if (value == null || value.isEmpty) {
-            return Constants.requiredField;
-          }
-          return null;
-        },
-      ),
-    );
+ Widget _buildDocumentTypeDropdown() {
+  // ✅ Lista de tipos válidos
+  final validTypes = [
+    'Cédula de Ciudadanía',
+    'Cédula de Extranjería',
+    'Pasaporte',
+    'Tarjeta de Identidad'
+  ];
+
+  // ✅ Normalizar el valor seleccionado
+  String? normalizedValue;
+  if (_selectedDocumentType != null && validTypes.contains(_selectedDocumentType)) {
+    normalizedValue = _selectedDocumentType;
   }
 
+  return Container(
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(12),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.pink.withOpacity(0.05),
+          blurRadius: 4,
+          offset: const Offset(0, 2),
+        ),
+      ],
+    ),
+    child: DropdownButtonFormField<String>(
+      value: normalizedValue, // ✅ Usar valor normalizado
+      decoration: InputDecoration(
+        labelText: 'Tipo de Documento',
+        prefixIcon: Icon(Icons.assignment_outlined, color: Colors.pink[400]),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.pink[200]!),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.pink[200]!),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.pink[400]!, width: 2),
+        ),
+        filled: true,
+        fillColor: Colors.white,
+        labelStyle: TextStyle(color: Colors.pink[600]),
+      ),
+      items: validTypes
+          .map((type) => DropdownMenuItem(value: type, child: Text(type)))
+          .toList(),
+      onChanged: (value) {
+        setState(() {
+          _selectedDocumentType = value;
+          _documentTypeController.text = value ?? '';
+        });
+      },
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return Constants.requiredField;
+        }
+        return null;
+      },
+    ),
+  );
+}
+
   Widget _buildCityDropdown() {
+    // ✅ Normalizar el valor seleccionado
+    String? normalizedCity;
+    if (_selectedCity != null && Constants.colombianCities.contains(_selectedCity)) {
+      normalizedCity = _selectedCity;
+    }
+
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
@@ -669,7 +689,7 @@ class _ClientProfileState extends State<ClientProfile> {
         ],
       ),
       child: DropdownButtonFormField<String>(
-        value: _selectedCity?.isNotEmpty == true ? _selectedCity : null,
+        value: normalizedCity, // ✅ Usar valor normalizado
         decoration: InputDecoration(
           labelText: 'Ciudad',
           prefixIcon: Icon(Icons.location_city, color: Colors.pink[400]),
