@@ -1,16 +1,17 @@
 class Constants {
-  // API Configuration
-  static const String baseUrl = 'https://deliciasoft-backend.onrender.com/api';
 
-  // API Endpoints
-  static const String loginClientEndpoint = '$baseUrl/Clientes';
-  static const String loginUserEndpoint = '$baseUrl/Usuarios'; 
-  static const String registerClientEndpoint = '$baseUrl/Clientes';
-  static const String registerUserEndpoint = '$baseUrl/Usuarios';
-  static const String getClientEndpoint = '$baseUrl/Clientes';
-  static const String getAdminEndpoint = '$baseUrl/Usuarios';
-  static const String getUserEndpoint = '$baseUrl/Usuarios';
-  static const String getRolesEndpoint = '$baseUrl/rols';
+  // API Configuration - ✅ CAMBIO PRINCIPAL
+  static const String baseUrl = 'https://deliciasoft-backend-i6g9.onrender.com/api';
+
+  // API Endpoints (todos usan baseUrl, así que se actualizarán automáticamente)
+  static const String loginClientEndpoint = '$baseUrl/clientes';
+  static const String loginUserEndpoint = '$baseUrl/usuarios'; 
+  static const String registerClientEndpoint = '$baseUrl/clientes';
+  static const String registerUserEndpoint = '$baseUrl/usuarios';
+  static const String getClientEndpoint = '$baseUrl/clientes';
+  static const String getAdminEndpoint = '$baseUrl/usuarios';
+  static const String getUserEndpoint = '$baseUrl/usuarios';
+  static const String getRolesEndpoint = '$baseUrl/rol';
 
   static const String sendVerificationCodeEndpoint = '$baseUrl/Auth/send-verification-code';
   static const String verifyCodeAndLoginEndpoint = '$baseUrl/Auth/verify-code-and-login';
@@ -18,6 +19,7 @@ class Constants {
   static const String resetPasswordEndpoint = '$baseUrl/Auth/reset-password';
   static const String verifyEmailEndpoint = '$baseUrl/Auth/verify-email';
   static const String refreshTokenEndpoint = '$baseUrl/Auth/refresh-token';
+
 
   // Email Configuration
   static const String emailPassword = 'xska kvfs wscx dris';
