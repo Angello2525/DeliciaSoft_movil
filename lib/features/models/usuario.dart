@@ -23,7 +23,7 @@ class Usuario {
   @JsonKey(name: 'correo')
   final String correo;
 
-  @JsonKey(name: 'hashContraseña')
+  @JsonKey(name: 'hashContrasena')
   final String? hashContrasena;
 
   @JsonKey(name: 'idRol')
@@ -43,37 +43,44 @@ class Usuario {
     this.apellido = '',
     this.correo = '',
     this.hashContrasena,
-    this.idRol = 2,            // ✅ idRol real por defecto (2)
+    this.idRol = 2,
     this.estado = true,
     this.idRolNavigation,
   });
 
   factory Usuario.fromJson(Map<String, dynamic> json) {
-  return Usuario(
-    idUsuario: json['idUsuario'] as int? ?? 0,
-    tipoDocumento: json['tipoDocumento']?.toString() ?? '',
-    documento: json['documento'] is int
-        ? json['documento'] as int
-        : int.tryParse(json['documento']?.toString() ?? '') ?? 0,
-    nombre: json['nombre']?.toString() ?? '',
-    apellido: json['apellido']?.toString() ?? '',
-    correo: json['correo']?.toString() ?? '',
-    hashContrasena: json['hashContraseña']?.toString(),
-    idRol: json['idRol'] is int
-        ? json['idRol'] as int
-        : int.tryParse(json['idRol']?.toString() ?? '') ?? 2,
-    estado: json['estado'] is bool
-        ? json['estado'] as bool
-        : json['estado']?.toString() == 'true',
-    idRolNavigation: json['idRolNavigation'] != null
-        ? Rol.fromJson(json['idRolNavigation'] as Map<String, dynamic>)
-        : null,
-  );
-}
+    return Usuario(
+      idUsuario: json['idUsuario'] as int? ?? json['idusuario'] as int? ?? 0,
+      tipoDocumento: json['tipoDocumento']?.toString() ?? json['tipodocumento']?.toString() ?? '',
+      documento: _parseDocumento(json),
+      nombre: json['nombre']?.toString() ?? '',
+      apellido: json['apellido']?.toString() ?? '',
+      correo: json['correo']?.toString() ?? '',
+      hashContrasena: json['hashContrasena']?.toString() ?? json['hashcontrasena']?.toString(),
+      idRol: _parseIdRol(json),
+      estado: json['estado'] is bool
+          ? json['estado'] as bool
+          : json['estado']?.toString() == 'true',
+      idRolNavigation: json['idRolNavigation'] != null
+          ? Rol.fromJson(json['idRolNavigation'] as Map<String, dynamic>)
+          : null,
+    );
+  }
+
+  static int _parseDocumento(Map<String, dynamic> json) {
+    final docValue = json['documento'];
+    if (docValue is int) return docValue;
+    return int.tryParse(docValue?.toString() ?? '') ?? 0;
+  }
+
+  static int _parseIdRol(Map<String, dynamic> json) {
+    final idRolValue = json['idRol'] ?? json['idrol'];
+    if (idRolValue is int) return idRolValue;
+    return int.tryParse(idRolValue?.toString() ?? '') ?? 2;
+  }
 
   Map<String, dynamic> toJson() => _$UsuarioToJson(this);
 
-  /// Para PUT: envía siempre idUsuario, idRol real (2) y hashContraseña no nulo
   Map<String, dynamic> toJsonWithoutId() {
     return {
       'idUsuario': idUsuario,
@@ -82,8 +89,8 @@ class Usuario {
       'nombre': nombre,
       'apellido': apellido,
       'correo': correo,
-      'hashContraseña': hashContrasena ?? "",
-      'idRol': idRol != 0 ? idRol : 2,   // asegura idRol válido
+      'hashContrasena': hashContrasena ?? "",
+      'idRol': idRol != 0 ? idRol : 2,
       'estado': estado,
     };
   }
