@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ProductoApiService {
-  final String baseUrl = 'http://deliciasoft.somee.com/api';
+  final String baseUrl = 'https://deliciasoft-backend-i6g9.onrender.com/api';
 
   // Obtener todos los productos
   Future<List<dynamic>> obtenerProductos() async {

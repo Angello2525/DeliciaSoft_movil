@@ -4,12 +4,12 @@ import 'package:http/http.dart' as http;
 import '../models/General_models.dart';
 
 class ProductoApiService {
-  static const String baseUrl = 'http://deliciasoft.somee.com/api';
+  static const String baseUrl = 'https://deliciasoft-backend.onrender.com/api';
   
   // Obtener productos por categoría
   Future<List<ProductModel>> obtenerProductosPorCategoria(String categoria) async {
     try {
-      final url = '$baseUrl/ProductoGenerals';
+      final url = '$baseUrl/categorias-productos';
       print('Llamando a: $url');
       
       final response = await http.get(
@@ -44,7 +44,7 @@ class ProductoApiService {
         
         // Filtrar productos de categoría 3 (fresas con crema)
         List<dynamic> productosCategoria3 = jsonData
-            .where((producto) => producto['idCategoriaProducto'] == 9 )
+            .where((producto) => producto['idCategoriaProducto'] == 5 )
             .toList();
 
         print('Productos de categoría 3 (cupcakes): ${productosCategoria3.length}');
@@ -183,7 +183,7 @@ class ProductoApiService {
         print('Total productos recibidos: ${productosData.length}');
         
         List<dynamic> productosCategoria3 = productosData
-    .where((producto) => int.tryParse(producto['idCategoriaProducto'].toString()) == 9)
+    .where((producto) => int.tryParse(producto['idCategoriaProducto'].toString()) == 5)
     .toList();
 
         

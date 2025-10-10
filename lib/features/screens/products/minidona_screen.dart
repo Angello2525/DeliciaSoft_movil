@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
-import 'dart:io';
 import '../../models/General_models.dart' as GeneralModels;
-import '../../services/Donas_api_services.dart';
+import '../../services/donas_api_services.dart';
 import 'Detail/DonaDetailScreen.dart';
-// Comentamos este import para evitar conflictos
-import '../../models/product_model.dart';
 
 class MinidonaScreen extends StatefulWidget {
   final String categoryTitle;
@@ -18,7 +15,7 @@ class MinidonaScreen extends StatefulWidget {
 class _MinidonaScreenState extends State<MinidonaScreen> {
   final TextEditingController _searchController = TextEditingController();
   final ProductoApiService _apiService = ProductoApiService();
-  
+
   List<GeneralModels.ProductModel> allProductos = [];
   List<GeneralModels.ProductModel> filteredProductos = [];
   bool isLoading = true;
@@ -38,34 +35,18 @@ class _MinidonaScreenState extends State<MinidonaScreen> {
         errorMessage = null;
       });
 
-      // Obtener productos de obleas directamente
-      List<GeneralModels.ProductModel> productos = await _apiService.obtenerProductosPorCategoria('MIni donas');
-      
+      // Obtener productos por categoría ID 4 (Mini Donas)
+      List<GeneralModels.ProductModel> productos =
+          await _apiService.obtenerProductosPorCategoriaId(4);
+
       if (mounted) {
         setState(() {
           allProductos = productos;
           filteredProductos = List.from(allProductos);
         });
       }
-      
-    } on HttpException catch (e) {
-      errorMessage = e.message;
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage!),
-            backgroundColor: Colors.redAccent,
-            action: SnackBarAction(
-              label: 'Reintentar',
-              textColor: Colors.white,
-              onPressed: _fetchProductos,
-            ),
-            duration: const Duration(seconds: 5),
-          ),
-        );
-      }
     } catch (e) {
-      errorMessage = 'Error inesperado: ${e.toString()}';
+      errorMessage = 'Error de conexión: ${e.toString()}';
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -94,28 +75,29 @@ class _MinidonaScreenState extends State<MinidonaScreen> {
         if (query.isEmpty) {
           filteredProductos = List.from(allProductos);
         } else {
-          filteredProductos = allProductos
-              .where((producto) => 
-                  producto.nombreProducto.toLowerCase().contains(query) ||
-                  (producto.nombreCategoria?.toLowerCase().contains(query) ?? false))
-              .toList();
+          filteredProductos = allProductos.where((producto) {
+            final nombre = producto.nombreProducto?.toLowerCase() ?? '';
+            final categoria = producto.nombreCategoria?.toLowerCase() ?? '';
+            return nombre.contains(query) || categoria.contains(query);
+          }).toList();
         }
       });
     }
   }
 
-void _navigateToDetail(ProductModel producto) { 
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => DonasDetailScreen(product: producto),
-    ),
-  );
-}
+void _navigateToDetail(GeneralModels.ProductModel producto) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => DonasDetailScreen(product: producto),
+      ),
+    );
+  }
+
   Widget _buildCard(GeneralModels.ProductModel producto) {
-    final nombre = producto.nombreProducto;
+    final nombre = producto.nombreProducto ?? '';
     final imagen = producto.urlImg ?? '';
-    final precio = producto.precioProducto;
+    final precio = producto.precioProducto ?? 0.0;
 
     return Card(
       elevation: 4,
@@ -123,7 +105,7 @@ void _navigateToDetail(ProductModel producto) {
         borderRadius: BorderRadius.circular(20),
       ),
       child: InkWell(
-        onTap: () => _navigateToDetail(ProductModel.fromBackendJson(producto)),
+        onTap: () => _navigateToDetail(producto),
         borderRadius: BorderRadius.circular(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -131,7 +113,8 @@ void _navigateToDetail(ProductModel producto) {
             Expanded(
               flex: 3,
               child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(20)),
                 child: _buildProductImage(imagen),
               ),
             ),
@@ -168,7 +151,8 @@ void _navigateToDetail(ProductModel producto) {
                       const SizedBox(height: 4),
                     ],
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
                         color: Colors.pinkAccent.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(15),
@@ -227,7 +211,8 @@ void _navigateToDetail(ProductModel producto) {
         return Center(
           child: CircularProgressIndicator(
             value: loadingProgress.expectedTotalBytes != null
-                ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                ? loadingProgress.cumulativeBytesLoaded /
+                    loadingProgress.expectedTotalBytes!
                 : null,
             color: Colors.pinkAccent,
             strokeWidth: 2,
@@ -259,13 +244,15 @@ void _navigateToDetail(ProductModel producto) {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            _searchController.text.isNotEmpty ? Icons.search_off : Icons.cake_outlined,
+            _searchController.text.isNotEmpty
+                ? Icons.search_off
+                : Icons.cake_outlined,
             size: 80,
             color: Colors.grey[400],
           ),
           const SizedBox(height: 16),
           Text(
-            _searchController.text.isNotEmpty 
+            _searchController.text.isNotEmpty
                 ? 'No se encontraron resultados'
                 : 'No hay productos disponibles',
             style: TextStyle(
@@ -292,7 +279,8 @@ void _navigateToDetail(ProductModel producto) {
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.pinkAccent,
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(25),
               ),
@@ -312,7 +300,6 @@ void _navigateToDetail(ProductModel producto) {
 
   @override
   Widget build(BuildContext context) {
-    print('Productos filtrados: ${filteredProductos.length}');
     return Scaffold(
       backgroundColor: const Color(0xFFFFF1F6),
       appBar: AppBar(
@@ -362,97 +349,44 @@ void _navigateToDetail(ProductModel producto) {
             )
           : Column(
               children: [
-                // Barra de búsqueda
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   child: TextField(
                     controller: _searchController,
                     decoration: InputDecoration(
-                      hintText: 'Buscar en ${widget.categoryTitle.toLowerCase()}...',
-                      hintStyle: TextStyle(color: Colors.grey[500]),
-                      prefixIcon: const Icon(Icons.search, color: Colors.grey),
-                      suffixIcon: ValueListenableBuilder<TextEditingValue>(
-                        valueListenable: _searchController,
-                        builder: (context, value, child) {
-                          return value.text.isNotEmpty
-                              ? IconButton(
-                                  icon: const Icon(Icons.clear, color: Colors.grey),
-                                  onPressed: () {
-                                    _searchController.clear();
-                                    FocusScope.of(context).unfocus();
-                                  },
-                                )
-                              : const SizedBox.shrink();
-                        },
-                      ),
-                      filled: true,
+                      hintText: 'Buscar mini donas...',
+                      prefixIcon: const Icon(Icons.search),
                       fillColor: Colors.white,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                      filled: true,
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(30),
+                        borderRadius: BorderRadius.circular(25),
                         borderSide: BorderSide.none,
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(30),
-                        borderSide: const BorderSide(color: Colors.pinkAccent, width: 2),
                       ),
                     ),
                   ),
                 ),
-                
-                // Banner informativo
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.pink[50],
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.pink[200]!),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.info_outline, color: Colors.pink[600], size: 20),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Toca cualquier producto para personalizarlo',
-                          style: TextStyle(
-                            color: Colors.pink[700],
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                
-                // Lista/Grid de productos
                 Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: filteredProductos.isEmpty
-                        ? _buildEmptyState()
-                        : RefreshIndicator(
-                            onRefresh: _fetchProductos,
-                            color: Colors.pinkAccent,
-                            child: GridView.builder(
-                              physics: const AlwaysScrollableScrollPhysics(
-                                parent: BouncingScrollPhysics(),
-                              ),
-                              itemCount: filteredProductos.length,
-                              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 2,
-                                crossAxisSpacing: 16,
-                                mainAxisSpacing: 16,
-                                childAspectRatio: 0.68,
-                              ),
-                              itemBuilder: (context, index) {
-                                return _buildCard(filteredProductos[index]);
-                              },
-                            ),
+                  child: filteredProductos.isEmpty
+                      ? _buildEmptyState()
+                      : GridView.builder(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 16,
+                            mainAxisSpacing: 16,
+                            childAspectRatio: 0.75,
                           ),
-                  ),
+                          itemCount: filteredProductos.length,
+                          itemBuilder: (context, index) {
+                            final producto = filteredProductos[index];
+                            return _buildCard(producto);
+                          },
+                        ),
                 ),
               ],
             ),

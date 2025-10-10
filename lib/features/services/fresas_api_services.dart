@@ -4,12 +4,12 @@ import 'package:http/http.dart' as http;
 import '../models/General_models.dart';
 
 class ProductoApiService {
-  static const String baseUrl = 'http://deliciasoft.somee.com/api';
+  static const String baseUrl = 'https://deliciasoft-backend.onrender.com/api';
   
   // Obtener productos por categoría
   Future<List<ProductModel>> obtenerProductosPorCategoria(String categoria) async {
     try {
-      final url = '$baseUrl/ProductoGenerals';
+      final url = '$baseUrl/categorias-productos';
       print('Llamando a: $url');
       
       final response = await http.get(
@@ -42,18 +42,18 @@ class ProductoApiService {
           print('Todas las categorías: $categorias');
         }
         
-        // Filtrar productos de categoría 3 (fresas con crema)
-        List<dynamic> productosCategoria3 = jsonData
-            .where((producto) => producto['idCategoriaProducto'] == 3)
+        // Filtrar productos de categoría 2 (fresas con crema)
+        List<dynamic> productosCategoria2 = jsonData
+            .where((producto) => producto['idCategoriaProducto'] == 2)
             .toList();
 
-        print('Productos de categoría 3 (Fresas con Crema): ${productosCategoria3.length}');
+        print('Productos de categoría 2 (Fresas con Crema): ${productosCategoria2.length}');
         print('=== FIN DEBUGGING ===');
 
         // Obtener imágenes para cada producto
         List<ProductModel> productosConImagenes = [];
         
-        for (var productoJson in productosCategoria3) {
+        for (var productoJson in productosCategoria2) {
           try {
             print('Procesando producto: ${productoJson['nombreProducto']}');
             
@@ -182,12 +182,12 @@ class ProductoApiService {
         List<dynamic> productosData = json.decode(productosResponse.body);
         print('Total productos recibidos: ${productosData.length}');
         
-        List<dynamic> productosCategoria3 = productosData
-    .where((producto) => int.tryParse(producto['idCategoriaProducto'].toString()) == 3)
+        List<dynamic> productosCategoria2 = productosData
+    .where((producto) => int.tryParse(producto['idCategoriaProducto'].toString()) == 2)
     .toList();
 
         
-        print('Productos de categoría 3 (Fresas con Crema): ${productosCategoria3.length}');
+        print('Productos de categoría 2 (Fresas con Crema): ${productosCategoria2.length}');
 
         // Procesar imágenes
         List<dynamic> imagenesData = json.decode(imagenesResponse.body);
@@ -204,7 +204,7 @@ class ProductoApiService {
         print('Total imágenes procesadas: ${mapaImagenes.length}');
 
         // Combinar productos con imágenes usando fromJson y copyWith
-        List<ProductModel> productos = productosCategoria3.map((productoJson) {
+        List<ProductModel> productos = productosCategoria2.map((productoJson) {
           String? urlImagen = mapaImagenes[productoJson['idImagen']];
           
           return ProductModel.fromJson(productoJson).copyWith(

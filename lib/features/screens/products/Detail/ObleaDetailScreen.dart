@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '../../../models/General_models.dart';
 import '../../../services/cart_services.dart';
 import '../../../models/cart_models.dart';
-import '../../../models/ProductConfiguration.dart'; // Importar ProductConfiguration
+import '../../../models/ProductConfiguration.dart';
 
 class ObleaDetailScreen extends StatefulWidget {
   final ProductModel product;
@@ -22,20 +24,10 @@ class ObleaDetailScreen extends StatefulWidget {
 class _ObleaDetailScreenState extends State<ObleaDetailScreen> {
   int quantity = 1;
   List<ObleaConfiguration> obleaConfigurations = [];
-
-  final Map<String, List<String>> ingredientesPersonalizables = {
-    'Oblea Sencilla (\$3000)': ['Chispitas'],
-    'Oblea Sencilla (\$6000)': ['Chispitas'],
-    'Oblea Premium (\$7000)': ['Chips de Chocolate', 'Maní'],
-    'Oblea Premium (\$8000)': ['Chips de Chocolate', 'Maní'],
-    'Oblea Premium (\$9000)': ['Chips de Chocolate', 'Maní'],
-  };
-
-  final Map<String, List<String>> opcionesReemplazo = {
-    'Chispitas': ['Chocolate', 'Maní'],
-    'Chips de Chocolate': ['Grajeas', 'Maní', 'Chispitas'],
-    'Maní': ['Grajeas', 'Chispitas', 'Chips de Chocolate'],
-  };
+  
+  // Datos de la API
+  List<AdicionModel> adiciones = [];
+  bool isLoadingAdiciones = true;
 
   final Map<String, ObleaDefaults> obleaDefaults = {
     'Oblea Sencilla (\$3000)': ObleaDefaults(
@@ -85,9 +77,10 @@ class _ObleaDetailScreenState extends State<ObleaDetailScreen> {
   @override
   void initState() {
     super.initState();
+    _fetchAdiciones();
+    
     if (widget.existingCartItem != null) {
       quantity = widget.existingCartItem!.cantidad;
-      // Convertir las configuraciones existentes
       obleaConfigurations = widget.existingCartItem!.configuraciones.map((cartObleaConfig) {
         return ObleaConfiguration(
           tipoOblea: cartObleaConfig.tipoOblea,
@@ -98,6 +91,46 @@ class _ObleaDetailScreenState extends State<ObleaDetailScreen> {
     } else {
       _initializeConfigurations();
     }
+  }
+
+  Future<void> _fetchAdiciones() async {
+    try {
+      final response = await http.get(
+        Uri.parse('https://deliciasoft-backend-i6g9.onrender.com/api/catalogo-adiciones'),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (mounted) {
+          setState(() {
+            adiciones = (data as List)
+                .map((json) => AdicionModel.fromJson(json))
+                .toList();
+            isLoadingAdiciones = false;
+          });
+        }
+      } else {
+        throw Exception('Error al cargar adiciones');
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => isLoadingAdiciones = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al cargar adiciones: $e'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    }
+  }
+
+  List<String> _getOpcionesReemplazo(String ingredienteOriginal) {
+    // Retornar TODOS los toppings disponibles desde la API
+    return adiciones
+        .where((adicion) => adicion.tipo == 'Topping')
+        .map((adicion) => adicion.nombreAdicion)
+        .toList();
   }
 
   void _initializeConfigurations() {
@@ -137,18 +170,15 @@ class _ObleaDetailScreenState extends State<ObleaDetailScreen> {
 
     final cartService = Provider.of<CartService>(context, listen: false);
 
-    // Actualizar precios en las configuraciones
     for (var config in obleaConfigurations) {
       config.precio = _getUnitPrice(config);
     }
 
     try {
       if (widget.existingCartItem != null) {
-        // Actualizar item existente
         await cartService.updateQuantity(widget.existingCartItem!.id, quantity);
         await cartService.updateConfiguration(widget.existingCartItem!.id, obleaConfigurations);
       } else {
-        // Agregar nuevo item
         await cartService.addToCart(
           producto: widget.product,
           cantidad: quantity,
@@ -177,6 +207,14 @@ class _ObleaDetailScreenState extends State<ObleaDetailScreen> {
         child: Column(
           children: [
             _buildAppBar(),
+            if (isLoadingAdiciones)
+              const Padding(
+                padding: EdgeInsets.all(16),
+                child: LinearProgressIndicator(
+                  color: Colors.pinkAccent,
+                  backgroundColor: Colors.pink,
+                ),
+              ),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
@@ -345,9 +383,20 @@ class _ObleaDetailScreenState extends State<ObleaDetailScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              ...defaults.ingredientesPersonalizables.keys.map((ingrediente) =>
-                  _buildIngredientePersonalizable(config, ingrediente),
-              ).toList(),
+              if (isLoadingAdiciones)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(8),
+                    child: CircularProgressIndicator(
+                      color: Colors.pinkAccent,
+                      strokeWidth: 2,
+                    ),
+                  ),
+                )
+              else
+                ...defaults.ingredientesPersonalizables.keys.map((ingrediente) =>
+                    _buildIngredientePersonalizable(config, ingrediente),
+                ).toList(),
             ],
 
             const SizedBox(height: 8),
@@ -394,7 +443,7 @@ class _ObleaDetailScreenState extends State<ObleaDetailScreen> {
   }
 
   Widget _buildIngredientePersonalizable(ObleaConfiguration config, String ingredienteOriginal) {
-    final opciones = opcionesReemplazo[ingredienteOriginal] ?? [];
+    final opciones = _getOpcionesReemplazo(ingredienteOriginal);
     final valorActual = config.ingredientesPersonalizados[ingredienteOriginal] ?? ingredienteOriginal;
 
     return Padding(
@@ -802,6 +851,30 @@ class _ObleaDetailScreenState extends State<ObleaDetailScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+// Modelo para las adiciones desde la API
+class AdicionModel {
+  final int idAdicion;
+  final String nombreAdicion;
+  final String tipo;
+  final double precio;
+
+  AdicionModel({
+    required this.idAdicion,
+    required this.nombreAdicion,
+    required this.tipo,
+    required this.precio,
+  });
+
+  factory AdicionModel.fromJson(Map<String, dynamic> json) {
+    return AdicionModel(
+      idAdicion: json['idAdicion'] ?? 0,
+      nombreAdicion: json['nombreAdicion'] ?? '',
+      tipo: json['tipo'] ?? '',
+      precio: (json['precio'] ?? 0).toDouble(),
     );
   }
 }

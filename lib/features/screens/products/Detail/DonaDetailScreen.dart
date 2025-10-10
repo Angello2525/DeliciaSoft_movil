@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import '../../../models/product_model.dart';
+import '../../../models/General_models.dart' as GeneralModels;
 
 class DonasDetailScreen extends StatefulWidget {
-  final ProductModel product;
+  final GeneralModels.ProductModel product;
 
   const DonasDetailScreen({super.key, required this.product});
 
@@ -57,7 +57,7 @@ class _DonasDetailScreenState extends State<DonasDetailScreen> {
   Future<void> _cargarToppingsDesdeAPI() async {
     setState(() => cargandoToppings = true);
     try {
-      final resp = await http.get(Uri.parse('http://deliciasoft.somee.com/api/CatalogoAdiciones'));
+      final resp = await http.get(Uri.parse('https://deliciasoft-backend-i6g9.onrender.com/api/catalogo-adiciones'));
       if (resp.statusCode == 200) {
         final List<dynamic> data = json.decode(resp.body);
         toppingsDisponibles = data
@@ -102,10 +102,11 @@ class _DonasDetailScreenState extends State<DonasDetailScreen> {
                   children: [
                     _buildProductImage(),
                     const SizedBox(height: 12),
-                    Text(widget.product.description,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                            fontSize: 15, fontWeight: FontWeight.w500)),
+                  Text(
+                    'Personaliza tu combo de mini donas',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                        fontSize: 15, fontWeight: FontWeight.w500)),
                     const SizedBox(height: 20),
                     _buildComboQuantitySelector(),
                     const SizedBox(height: 20),
@@ -134,7 +135,7 @@ class _DonasDetailScreenState extends State<DonasDetailScreen> {
                 onPressed: () => Navigator.pop(context)),
             const SizedBox(width: 8),
             Expanded(
-              child: Text(widget.product.title,
+              child: Text(widget.product.nombreProducto ?? 'Producto',
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                       fontSize: 20,
@@ -152,7 +153,7 @@ class _DonasDetailScreenState extends State<DonasDetailScreen> {
         elevation: 4,
         child: ClipRRect(
           borderRadius: BorderRadius.circular(16),
-          child: Image.network(widget.product.imageUrl,
+          child: Image.network(widget.product.urlImg ?? '',
               height: 200, fit: BoxFit.cover, errorBuilder: (_, __, ___) {
             return const Icon(Icons.donut_small,
                 size: 100, color: Colors.pinkAccent);

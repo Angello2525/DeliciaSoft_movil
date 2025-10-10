@@ -644,7 +644,7 @@ void initState() {
 }
 Future<void> _cargarAdicionesDesdeApi() async {
   try {
-    final response = await http.get(Uri.parse('http://deliciasoft.somee.com/api/CatalogoAdiciones'));
+    final response = await http.get(Uri.parse('https://deliciasoft-backend-i6g9.onrender.com/api/catalogo-adiciones'));
     if (response.statusCode == 200) {
       final List<dynamic> data = json.decode(response.body);
       final List<String> nombres = data

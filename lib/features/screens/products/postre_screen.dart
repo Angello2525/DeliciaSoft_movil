@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'dart:io';
 import '../../models/General_models.dart' as GeneralModels;
-import '../../services/Postres_api_services.dart';
+import '../../services/donas_api_services.dart'; // ← Usar el servicio unificado
 import 'Detail/PostresDetailScreen.dart';
-// Comentamos este import para evitar conflictos
 import '../../models/product_model.dart';
 
 class PostreScreen extends StatefulWidget {
@@ -18,7 +16,7 @@ class PostreScreen extends StatefulWidget {
 class _PostreScreenState extends State<PostreScreen> {
   final TextEditingController _searchController = TextEditingController();
   final ProductoApiService _apiService = ProductoApiService();
-  
+
   List<GeneralModels.ProductModel> allProductos = [];
   List<GeneralModels.ProductModel> filteredProductos = [];
   bool isLoading = true;
@@ -38,39 +36,23 @@ class _PostreScreenState extends State<PostreScreen> {
         errorMessage = null;
       });
 
-      // Obtener productos de obleas directamente
-      List<GeneralModels.ProductModel> productos = await _apiService.obtenerProductosPorCategoria('Postres');
-      
+      // Obtener productos por categoría ID 8 (Postres)
+      List<GeneralModels.ProductModel> productos =
+          await _apiService.obtenerProductosPorCategoriaId(8);
+
       if (mounted) {
         setState(() {
           allProductos = productos;
           filteredProductos = List.from(allProductos);
         });
       }
-      
-    } on HttpException catch (e) {
-      errorMessage = e.message;
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage!),
-            backgroundColor: Colors.redAccent,
-            action: SnackBarAction(
-              label: 'Reintentar',
-              textColor: Colors.white,
-              onPressed: _fetchProductos,
-            ),
-            duration: const Duration(seconds: 5),
-          ),
-        );
-      }
     } catch (e) {
-      errorMessage = 'Error inesperado: ${e.toString()}';
+      errorMessage = 'Error de conexión: ${e.toString()}';
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(errorMessage!),
-            backgroundColor: Colors.redAccent,
+            backgroundColor: Colors.pinkAccent,
             action: SnackBarAction(
               label: 'Reintentar',
               textColor: Colors.white,
@@ -94,24 +76,25 @@ class _PostreScreenState extends State<PostreScreen> {
         if (query.isEmpty) {
           filteredProductos = List.from(allProductos);
         } else {
-          filteredProductos = allProductos
-              .where((producto) => 
-                  producto.nombreProducto.toLowerCase().contains(query) ||
-                  (producto.nombreCategoria?.toLowerCase().contains(query) ?? false))
-              .toList();
+          filteredProductos = allProductos.where((producto) {
+            final nombre = producto.nombreProducto.toLowerCase();
+            final categoria = producto.nombreCategoria?.toLowerCase() ?? '';
+            return nombre.contains(query) || categoria.contains(query);
+          }).toList();
         }
       });
     }
   }
 
-void _navigateToDetail(ProductModel producto) { 
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => PostreDetailScreen(product: producto),
-    ),
-  );
-}
+  void _navigateToDetail(ProductModel producto) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PostreDetailScreen(product: producto),
+      ),
+    );
+  }
+
   Widget _buildCard(GeneralModels.ProductModel producto) {
     final nombre = producto.nombreProducto;
     final imagen = producto.urlImg ?? '';
@@ -131,7 +114,8 @@ void _navigateToDetail(ProductModel producto) {
             Expanded(
               flex: 3,
               child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(20)),
                 child: _buildProductImage(imagen),
               ),
             ),
@@ -162,13 +146,14 @@ void _navigateToDetail(ProductModel producto) {
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: Colors.green,
+                          color: Colors.pink,
                         ),
                       ),
                       const SizedBox(height: 4),
                     ],
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
                         color: Colors.pinkAccent.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(15),
@@ -178,7 +163,7 @@ void _navigateToDetail(ProductModel producto) {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
-                          color: Colors.pinkAccent,
+                          color: Colors.deepOrangeAccent,
                         ),
                       ),
                     ),
@@ -203,13 +188,13 @@ void _navigateToDetail(ProductModel producto) {
               Icon(
                 Icons.cake,
                 size: 50,
-                color: Colors.pinkAccent,
+                color: Colors.deepOrangeAccent,
               ),
               SizedBox(height: 8),
               Text(
                 'Postres',
                 style: TextStyle(
-                  color: Colors.pinkAccent,
+                  color: Colors.deepOrangeAccent,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -227,9 +212,10 @@ void _navigateToDetail(ProductModel producto) {
         return Center(
           child: CircularProgressIndicator(
             value: loadingProgress.expectedTotalBytes != null
-                ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                ? loadingProgress.cumulativeBytesLoaded /
+                    loadingProgress.expectedTotalBytes!
                 : null,
-            color: Colors.pinkAccent,
+            color: Colors.deepOrangeAccent,
             strokeWidth: 2,
           ),
         );
@@ -259,13 +245,15 @@ void _navigateToDetail(ProductModel producto) {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            _searchController.text.isNotEmpty ? Icons.search_off : Icons.cake_outlined,
+            _searchController.text.isNotEmpty
+                ? Icons.search_off
+                : Icons.cake_outlined,
             size: 80,
             color: Colors.grey[400],
           ),
           const SizedBox(height: 16),
           Text(
-            _searchController.text.isNotEmpty 
+            _searchController.text.isNotEmpty
                 ? 'No se encontraron resultados'
                 : 'No hay productos disponibles',
             style: TextStyle(
@@ -290,9 +278,10 @@ void _navigateToDetail(ProductModel producto) {
             icon: const Icon(Icons.refresh),
             label: const Text('Reintentar'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.pinkAccent,
+              backgroundColor: Colors.deepOrangeAccent,
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(25),
               ),
@@ -312,11 +301,10 @@ void _navigateToDetail(ProductModel producto) {
 
   @override
   Widget build(BuildContext context) {
-    print('Productos filtrados: ${filteredProductos.length}');
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF1F6),
+      backgroundColor: const Color(0xFFFFF5F0),
       appBar: AppBar(
-        backgroundColor: Colors.pinkAccent,
+        backgroundColor: Colors.deepOrangeAccent,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
@@ -346,7 +334,7 @@ void _navigateToDetail(ProductModel producto) {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   CircularProgressIndicator(
-                    color: Colors.pinkAccent,
+                    color: Colors.deepOrangeAccent,
                     strokeWidth: 3,
                   ),
                   SizedBox(height: 16),
@@ -394,7 +382,7 @@ void _navigateToDetail(ProductModel producto) {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(30),
-                        borderSide: const BorderSide(color: Colors.pinkAccent, width: 2),
+                        borderSide: const BorderSide(color: Colors.deepOrangeAccent, width: 2),
                       ),
                     ),
                   ),
@@ -405,19 +393,19 @@ void _navigateToDetail(ProductModel producto) {
                   margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.pink[50],
+                    color: Colors.deepOrange[50],
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.pink[200]!),
+                    border: Border.all(color: Colors.deepOrange[200]!),
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.info_outline, color: Colors.pink[600], size: 20),
+                      Icon(Icons.info_outline, color: Colors.deepOrange[600], size: 20),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           'Toca cualquier producto para personalizarlo',
                           style: TextStyle(
-                            color: Colors.pink[700],
+                            color: Colors.deepOrange[700],
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
                           ),
@@ -435,7 +423,7 @@ void _navigateToDetail(ProductModel producto) {
                         ? _buildEmptyState()
                         : RefreshIndicator(
                             onRefresh: _fetchProductos,
-                            color: Colors.pinkAccent,
+                            color: Colors.deepOrangeAccent,
                             child: GridView.builder(
                               physics: const AlwaysScrollableScrollPhysics(
                                 parent: BouncingScrollPhysics(),

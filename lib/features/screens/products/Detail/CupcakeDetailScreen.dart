@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import '../../../models/product_model.dart';
+import '../../../models/General_models.dart' as GeneralModels;
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+
 class CupcakeDetailScreen extends StatefulWidget {
-  final ProductModel product;
+  final GeneralModels.ProductModel product;
 
   const CupcakeDetailScreen({super.key, required this.product});
 
@@ -18,8 +19,7 @@ class _CupcakeDetailScreenState extends State<CupcakeDetailScreen> {
   int cantidad = 1;
 
   List<String> rellenosDisponibles = [];
-List<String> toppingsDisponibles = [];
-
+  List<String> toppingsDisponibles = [];
 
   final List<String> coberturasDisponibles = [
     'Crema de leche',
@@ -27,7 +27,7 @@ List<String> toppingsDisponibles = [];
     'Cobertura de chocolate',
   ];
 
-  double _precioTotal() => cantidad * 5000;
+  double _precioTotal() => cantidad * widget.product.precioProducto;
 
   void _resetFormulario() {
     setState(() {
@@ -39,34 +39,42 @@ List<String> toppingsDisponibles = [];
   }
 
   @override
-void initState() {
-  super.initState();
-  _cargarDatosDesdeAPI(); // 👈 Llamar la carga de API aquí
-}
-
-
-Future<void> _cargarDatosDesdeAPI() async {
-  try {
-    final rellenoResponse = await http.get(Uri.parse('http://deliciasoft.somee.com/api/CatalogoRellenoes'));
-    final toppingResponse = await http.get(Uri.parse('http://deliciasoft.somee.com/api/CatalogoAdiciones'));
-
-    if (rellenoResponse.statusCode == 200 && toppingResponse.statusCode == 200) {
-      final List<dynamic> rellenoData = json.decode(rellenoResponse.body);
-      final List<dynamic> toppingData = json.decode(toppingResponse.body);
-
-      setState(() {
-        rellenosDisponibles = rellenoData.map<String>((e) => e['nombre'].toString()).toList();
-        toppingsDisponibles = toppingData.map<String>((e) => e['nombre'].toString()).toList();
-      });
-    } else {
-      debugPrint('Error en respuestas: ${rellenoResponse.statusCode} / ${toppingResponse.statusCode}');
-    }
-  } catch (e) {
-    debugPrint('Error al cargar datos desde API: $e');
+  void initState() {
+    super.initState();
+    _cargarDatosDesdeAPI();
   }
-}
 
+  Future<void> _cargarDatosDesdeAPI() async {
+    try {
+      final rellenoResponse = await http.get(
+          Uri.parse('https://deliciasoft-backend.onrender.com/api/catalogo-rellenos'));
+      final toppingResponse = await http.get(
+          Uri.parse('https://deliciasoft-backend.onrender.com/api/catalogo-adiciones'));
 
+      if (rellenoResponse.statusCode == 200 && toppingResponse.statusCode == 200) {
+        final List<dynamic> rellenoData = json.decode(rellenoResponse.body);
+        final List<dynamic> toppingData = json.decode(toppingResponse.body);
+
+        setState(() {
+          rellenosDisponibles = rellenoData
+              .where((e) => e['estado'] == true)
+              .map<String>((e) => e['nombreRelleno']?.toString() ?? e['nombre']?.toString() ?? '')
+              .where((name) => name.isNotEmpty)
+              .toList();
+          
+          toppingsDisponibles = toppingData
+              .where((e) => e['estado'] == true)
+              .map<String>((e) => e['nombreAdicion']?.toString() ?? e['nombre']?.toString() ?? '')
+              .where((name) => name.isNotEmpty)
+              .toList();
+        });
+      } else {
+        debugPrint('Error en respuestas: ${rellenoResponse.statusCode} / ${toppingResponse.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('Error al cargar datos desde API: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -85,7 +93,7 @@ Future<void> _cargarDatosDesdeAPI() async {
                     _buildImagenProducto(),
                     const SizedBox(height: 12),
                     Text(
-                      widget.product.description,
+                      widget.product.descripcion ?? 'Personaliza tu cupcake',
                       textAlign: TextAlign.center,
                       style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
                     ),
@@ -127,7 +135,7 @@ Future<void> _cargarDatosDesdeAPI() async {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              widget.product.title,
+              widget.product.nombreProducto,
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 20,
@@ -149,7 +157,7 @@ Future<void> _cargarDatosDesdeAPI() async {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
         child: Image.network(
-          widget.product.imageUrl,
+          widget.product.urlImg ?? '',
           height: 200,
           fit: BoxFit.cover,
           errorBuilder: (_, __, ___) =>
@@ -206,10 +214,55 @@ Future<void> _cargarDatosDesdeAPI() async {
     String selectedValue,
     ValueChanged<String?> onChanged,
   ) {
+    // Validar si la lista está vacía
+    if (items.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.orange[50],
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.orange[200]!),
+        ),
+        child: Row(
+          children: [
+            const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.orange,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Cargando opciones de $label...',
+                style: const TextStyle(
+                  color: Colors.orange,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Eliminar duplicados y valores vacíos
+    final uniqueItems = items.where((item) => item.isNotEmpty).toSet().toList();
+    
+    // Verificar si el valor seleccionado está en la lista
+    final validSelectedValue = uniqueItems.contains(selectedValue) ? selectedValue : null;
+
     return DropdownButtonFormField<String>(
-      value: selectedValue.isEmpty ? null : selectedValue,
+      value: validSelectedValue,
       decoration: _dropdownDecoration(label),
-      items: items.map((item) => DropdownMenuItem(value: item, child: Text(item))).toList(),
+      items: uniqueItems
+          .map((item) => DropdownMenuItem(
+                value: item,
+                child: Text(item),
+              ))
+          .toList(),
       onChanged: onChanged,
     );
   }
@@ -300,7 +353,7 @@ Future<void> _cargarDatosDesdeAPI() async {
     }
   }
 
-    void _showValidationAlert(List<String> errors) {
+  void _showValidationAlert(List<String> errors) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -327,7 +380,7 @@ Future<void> _cargarDatosDesdeAPI() async {
                 ),
                 child: Icon(
                   Icons.error_outline,
-                  color: Colors.red[600],
+                  color: Colors.pink[600],
                   size: 30,
                 ),
               ),
@@ -337,7 +390,7 @@ Future<void> _cargarDatosDesdeAPI() async {
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: Colors.red,
+                  color: Colors.pink,
                 ),
               ),
               const SizedBox(height: 12),
@@ -367,7 +420,7 @@ Future<void> _cargarDatosDesdeAPI() async {
                   ElevatedButton(
                     onPressed: () => Navigator.pop(context),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
+                      backgroundColor: Colors.pink,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -384,70 +437,72 @@ Future<void> _cargarDatosDesdeAPI() async {
       ),
     );
   }
+
   void _showSuccessAlert() {
-  showDialog(
-    context: context,
-    barrierDismissible: false, 
-    builder: (context) => Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      backgroundColor: const Color(0xFFFFF1F6), 
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.check_circle_rounded,
-                size: 60, color: Colors.green),
-            const SizedBox(height: 10),
-            const Text(
-              '¡Éxito!',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.pinkAccent,
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: const Color(0xFFFFF1F6),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.check_circle_rounded,
+                  size: 60, color: Colors.pink),
+              const SizedBox(height: 10),
+              const Text(
+                '¡Éxito!',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.pinkAccent,
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Se ${cantidad == 1 ? 'ha' : 'han'} añadido $cantidad ${cantidad == 1 ? 'cupcake' : 'cupcakes'} al carrito.',
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 15),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Total: \$${_precioTotal().toStringAsFixed(0)}',
-              style: const TextStyle(
-                  fontWeight: FontWeight.bold, fontSize: 16),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    _resetFormulario();
-                  },
-                  child: const Text(
-                    'Seguir comprando',
-                    style: TextStyle(color: Colors.pinkAccent),
+              const SizedBox(height: 12),
+              Text(
+                'Se ${cantidad == 1 ? 'ha' : 'han'} añadido $cantidad ${cantidad == 1 ? 'cupcake' : 'cupcakes'} al carrito.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 15),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Total: \$${_precioTotal().toStringAsFixed(0)}',
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _resetFormulario();
+                    },
+                    child: const Text(
+                      'Seguir comprando',
+                      style: TextStyle(color: Colors.pinkAccent),
+                    ),
                   ),
-                ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    Navigator.pop(context);
-                  },
-                  child: const Text(
-                    'Volver al inicio',
-                    style: TextStyle(color: Colors.pinkAccent),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      Navigator.pop(context);
+                    },
+                    child: const Text(
+                      'Volver al inicio',
+                      style: TextStyle(color: Colors.pinkAccent),
+                    ),
                   ),
-                ),
-              ],
-            )
-          ],
+                ],
+              )
+            ],
+          ),
         ),
       ),
-    ),
-  );
-}}
+    );
+  }
+}

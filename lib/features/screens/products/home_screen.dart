@@ -1,4 +1,8 @@
 
+import 'package:delicias_darsy_movil/features/screens/products/Sandwiche_screen.dart';
+import 'package:delicias_darsy_movil/features/screens/products/arrozConLeche.dart';
+import 'package:delicias_darsy_movil/features/screens/products/bedidass_screen.dart';
+import 'package:delicias_darsy_movil/features/screens/products/chocolate_screen.dart';
 import 'package:flutter/material.dart';
 import '../../models/category.dart';
 import '../../widgets/category_card.dart';
@@ -46,6 +50,14 @@ class _HomeScreenState extends State<HomeScreen> {
         return PostreScreen(categoryTitle: title);
       case "mini donas":
         return MinidonaScreen(categoryTitle: title);
+      case "arroz con leche":
+        return ArrozConLecheScreen(categoryTitle: title);
+        case "sandwiches":
+      return SandwichesScreen(categoryTitle: title);
+    case "bebidas":
+      return BebidasScreen(categoryTitle: title);
+    case "chocolate":
+      return ChocolateScreen(categoryTitle: title);
       default:
         return null;
     }

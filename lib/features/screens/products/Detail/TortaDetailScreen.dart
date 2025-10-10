@@ -53,7 +53,7 @@ String? selectedSabor;
     'Limón': 13000,
   };
 Future<void> fetchRellenos() async {
-  final response = await http.get(Uri.parse('http://deliciasoft.somee.com/api/CatalogoRellenoes'));
+  final response = await http.get(Uri.parse('https://deliciasoft-backend-i6g9.onrender.com/api/catalogo-relleno'));
   if (response.statusCode == 200) {
     final List<dynamic> data = jsonDecode(response.body);
     setState(() {
@@ -65,7 +65,7 @@ Future<void> fetchRellenos() async {
 }
 
 Future<void> fetchSabores() async {
-  final response = await http.get(Uri.parse('http://deliciasoft.somee.com/api/CatalogoSabors'));
+  final response = await http.get(Uri.parse('https://deliciasoft-backend-i6g9.onrender.com/api/catalogo-sabor'));
   if (response.statusCode == 200) {
     final List<dynamic> data = jsonDecode(response.body);
     setState(() {

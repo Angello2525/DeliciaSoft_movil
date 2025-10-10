@@ -1,19 +1,17 @@
 import 'package:flutter/material.dart';
 import '../../models/General_models.dart' as GeneralModels;
-import '../../services/donas_api_services.dart'; // ← Usar el servicio unificado
-import 'Detail/TortaDetailScreen.dart';
-import '../../models/product_model.dart';
+import '../../services/donas_api_services.dart';
 
-class TortasScreen extends StatefulWidget {
+class BebidasScreen extends StatefulWidget {
   final String categoryTitle;
 
-  const TortasScreen({super.key, required this.categoryTitle});
+  const BebidasScreen({super.key, required this.categoryTitle});
 
   @override
-  State<TortasScreen> createState() => _TortasScreenState();
+  State<BebidasScreen> createState() => _BebidasScreenState();
 }
 
-class _TortasScreenState extends State<TortasScreen> {
+class _BebidasScreenState extends State<BebidasScreen> {
   final TextEditingController _searchController = TextEditingController();
   final ProductoApiService _apiService = ProductoApiService();
 
@@ -36,9 +34,8 @@ class _TortasScreenState extends State<TortasScreen> {
         errorMessage = null;
       });
 
-      // Obtener productos por categoría ID 20 (Tortas)
       List<GeneralModels.ProductModel> productos =
-          await _apiService.obtenerProductosPorCategoriaId(20);
+          await _apiService.obtenerProductosPorCategoriaId(5);
 
       if (mounted) {
         setState(() {
@@ -86,11 +83,13 @@ class _TortasScreenState extends State<TortasScreen> {
     }
   }
 
-  void _navigateToDetail(ProductModel producto) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => TortaDetailScreen(product: producto),
+  void _addToCart(GeneralModels.ProductModel producto) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${producto.nombreProducto} agregado al carrito'),
+        backgroundColor: Colors.green,
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
       ),
     );
   }
@@ -105,74 +104,80 @@ class _TortasScreenState extends State<TortasScreen> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
       ),
-      child: InkWell(
-        onTap: () => _navigateToDetail(ProductModel.fromBackendJson(producto)),
-        borderRadius: BorderRadius.circular(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              flex: 3,
-              child: ClipRRect(
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(20)),
-                child: _buildProductImage(imagen),
-              ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            flex: 3,
+            child: ClipRRect(
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(20)),
+              child: _buildProductImage(imagen),
             ),
-            Expanded(
-              flex: 2,
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        nombre,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87,
-                        ),
-                        textAlign: TextAlign.center,
+          ),
+          Expanded(
+            flex: 2,
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Flexible(
+                    child: Text(
+                      nombre,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  if (precio > 0) ...[
+                    Text(
+                      '\$${precio.toStringAsFixed(0)}',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green,
                       ),
                     ),
                     const SizedBox(height: 8),
-                    if (precio > 0) ...[
-                      Text(
-                        '\$${precio.toStringAsFixed(0)}',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                    ],
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.pinkAccent.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      child: const Text(
-                        'Personalizable',
+                  ],
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () => _addToCart(producto),
+                      icon: const Icon(Icons.shopping_cart, size: 16),
+                      label: const Text(
+                        'Agregar al carrito',
                         style: TextStyle(
                           fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.pinkAccent,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.lightBlue,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 10,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -186,15 +191,15 @@ class _TortasScreenState extends State<TortasScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
-                Icons.cake,
+                Icons.local_drink,
                 size: 50,
-                color: Colors.pinkAccent,
+                color: Colors.lightBlue,
               ),
               SizedBox(height: 8),
               Text(
-                'Tortas',
+                'Bebidas',
                 style: TextStyle(
-                  color: Colors.pinkAccent,
+                  color: Colors.lightBlue,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -215,7 +220,7 @@ class _TortasScreenState extends State<TortasScreen> {
                 ? loadingProgress.cumulativeBytesLoaded /
                     loadingProgress.expectedTotalBytes!
                 : null,
-            color: Colors.pinkAccent,
+            color: Colors.lightBlue,
             strokeWidth: 2,
           ),
         );
@@ -247,7 +252,7 @@ class _TortasScreenState extends State<TortasScreen> {
           Icon(
             _searchController.text.isNotEmpty
                 ? Icons.search_off
-                : Icons.cake_outlined,
+                : Icons.local_drink_outlined,
             size: 80,
             color: Colors.grey[400],
           ),
@@ -278,7 +283,7 @@ class _TortasScreenState extends State<TortasScreen> {
             icon: const Icon(Icons.refresh),
             label: const Text('Reintentar'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.pinkAccent,
+              backgroundColor: Colors.lightBlue,
               foregroundColor: Colors.white,
               padding:
                   const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -302,9 +307,9 @@ class _TortasScreenState extends State<TortasScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF1F6),
+      backgroundColor: const Color(0xFFE3F2FD),
       appBar: AppBar(
-        backgroundColor: Colors.pinkAccent,
+        backgroundColor: Colors.lightBlue,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
@@ -334,7 +339,7 @@ class _TortasScreenState extends State<TortasScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   CircularProgressIndicator(
-                    color: Colors.pinkAccent,
+                    color: Colors.lightBlue,
                     strokeWidth: 3,
                   ),
                   SizedBox(height: 16),
@@ -351,42 +356,59 @@ class _TortasScreenState extends State<TortasScreen> {
           : Column(
               children: [
                 Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                   child: TextField(
                     controller: _searchController,
                     decoration: InputDecoration(
-                      hintText: 'Buscar tortas...',
-                      prefixIcon: const Icon(Icons.search),
-                      fillColor: Colors.white,
+                      hintText: 'Buscar en ${widget.categoryTitle.toLowerCase()}...',
+                      hintStyle: TextStyle(color: Colors.grey[500]),
+                      prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                      suffixIcon: ValueListenableBuilder<TextEditingValue>(
+                        valueListenable: _searchController,
+                        builder: (context, value, child) {
+                          return value.text.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear, color: Colors.grey),
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    FocusScope.of(context).unfocus();
+                                  },
+                                )
+                              : const SizedBox.shrink();
+                        },
+                      ),
                       filled: true,
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 12),
+                      fillColor: Colors.white,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(25),
+                        borderRadius: BorderRadius.circular(30),
                         borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30),
+                        borderSide: const BorderSide(color: Colors.lightBlue, width: 2),
                       ),
                     ),
                   ),
                 ),
+                
                 Container(
-                  margin:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.pink[50],
+                    color: Colors.blue[50],
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.pink[200]!),
+                    border: Border.all(color: Colors.blue[200]!),
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.info_outline, color: Colors.pink[600], size: 20),
+                      Icon(Icons.shopping_cart_outlined, color: Colors.blue[700], size: 20),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Toca cualquier producto para personalizarlo',
+                          'Haz clic en "Agregar al carrito" para añadir productos',
                           style: TextStyle(
-                            color: Colors.pink[700],
+                            color: Colors.blue[900],
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
                           ),
@@ -395,25 +417,32 @@ class _TortasScreenState extends State<TortasScreen> {
                     ],
                   ),
                 ),
+                
                 Expanded(
-                  child: filteredProductos.isEmpty
-                      ? _buildEmptyState()
-                      : GridView.builder(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 12),
-                          gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 16,
-                            mainAxisSpacing: 16,
-                            childAspectRatio: 0.75,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: filteredProductos.isEmpty
+                        ? _buildEmptyState()
+                        : RefreshIndicator(
+                            onRefresh: _fetchProductos,
+                            color: Colors.lightBlue,
+                            child: GridView.builder(
+                              physics: const AlwaysScrollableScrollPhysics(
+                                parent: BouncingScrollPhysics(),
+                              ),
+                              itemCount: filteredProductos.length,
+                              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                crossAxisSpacing: 16,
+                                mainAxisSpacing: 16,
+                                childAspectRatio: 0.68,
+                              ),
+                              itemBuilder: (context, index) {
+                                return _buildCard(filteredProductos[index]);
+                              },
+                            ),
                           ),
-                          itemCount: filteredProductos.length,
-                          itemBuilder: (context, index) {
-                            final producto = filteredProductos[index];
-                            return _buildCard(producto);
-                          },
-                        ),
+                  ),
                 ),
               ],
             ),
