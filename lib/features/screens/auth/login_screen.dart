@@ -239,16 +239,15 @@ class _LoginScreenState extends State<LoginScreen> {
                     // Logo y mensaje de bienvenida
                     Center(
                       child: Container(
-                        width: 80,
-                        height: 80,
+                        width: 120,
+                        height: 120,
                         decoration: BoxDecoration(
-                          color: Colors.pink.withOpacity(0.1),
-                          shape: BoxShape.circle,
+                          color: Colors.transparent,
+                          borderRadius: BorderRadius.circular(20),
                         ),
-                        child: const Icon(
-                          Icons.person,
-                          size: 40,
-                          color: Colors.pink,
+                        child: Image.asset(
+                          'assets/logo.png',
+                          fit: BoxFit.contain,
                         ),
                       ),
                     ),
