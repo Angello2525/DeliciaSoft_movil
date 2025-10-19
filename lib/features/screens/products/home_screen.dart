@@ -1,8 +1,3 @@
-
-import 'package:delicias_darsy_movil/features/screens/products/Sandwiche_screen.dart';
-import 'package:delicias_darsy_movil/features/screens/products/arrozConLeche.dart';
-import 'package:delicias_darsy_movil/features/screens/products/bedidass_screen.dart';
-import 'package:delicias_darsy_movil/features/screens/products/chocolate_screen.dart';
 import 'package:flutter/material.dart';
 import '../../models/category.dart';
 import '../../widgets/category_card.dart';
@@ -16,6 +11,10 @@ import 'tortas_screen.dart';
 import 'cupcake_screen.dart';
 import 'minidona_screen.dart';
 import 'postre_screen.dart';
+import 'arrozConLeche.dart';
+import 'Sandwiche_screen.dart';
+import 'bebidas_screen.dart';
+import 'chocolate_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -25,89 +24,98 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // Llamada futura a la API para obtener las categorías
   late Future<List<Category>> _futureCategorias;
 
   @override
   void initState() {
     super.initState();
-    // Se llama el servicio GET desde la API de Somee para obtener las categorías
     _futureCategorias = CategoriaApiService().obtenerCategorias();
   }
 
-  // Determina qué pantalla mostrar según el nombre de la categoría
+  // Mapeo de categorías a sus pantallas correspondientes
   Widget? _getCategoryScreen(String title) {
-    switch (title.toLowerCase()) {
-      case "fresas con crema":
-        return FresaScreen(categoryTitle: title);
-      case "obleas":
-        return ObleaScreen(categoryTitle: title);
-      case "tortas":
-        return TortasScreen(categoryTitle: title);
-      case "cupcakes":
-        return CupcakeScreen(categoryTitle: title);
-      case "postres":
-        return PostreScreen(categoryTitle: title);
-      case "mini donas":
-        return MinidonaScreen(categoryTitle: title);
-      case "arroz con leche":
-        return ArrozConLecheScreen(categoryTitle: title);
-        case "sandwiches":
-      return SandwichesScreen(categoryTitle: title);
-    case "bebidas":
-      return BebidasScreen(categoryTitle: title);
-    case "chocolate":
-      return ChocolateScreen(categoryTitle: title);
-      default:
-        return null;
-    }
-  }
+    final normalizedTitle = title.trim().toLowerCase();
+    
+    debugPrint('🔍 Categoría seleccionada: "$title"');
+    debugPrint('🔍 Título normalizado: "$normalizedTitle"');
+    
+    final Map<String, Widget Function()> screenMap = {
+      'fresas con crema': () => FresaScreen(categoryTitle: title),
+      'obleas': () => ObleaScreen(categoryTitle: title),
+      'tortas': () => TortasScreen(categoryTitle: title),
+      'cupcakes': () => CupcakeScreen(categoryTitle: title),
+      'postres': () => PostreScreen(categoryTitle: title),
+      'mini donas': () => MinidonaScreen(categoryTitle: title),
+      'arroz con leche': () => ArrozConLecheScreen(categoryTitle: title),
+      'sandwiches': () => SandwichesScreen(categoryTitle: title),
+      'sandwich': () => SandwichesScreen(categoryTitle: title),
+      'bebidas': () => BebidasScreen(categoryTitle: title),
+      'bebida': () => BebidasScreen(categoryTitle: title),
+      'chocolate': () => ChocolateScreen(categoryTitle: title),
+      'chocolates': () => ChocolateScreen(categoryTitle: title),
+    };
 
-  // Asigna una imagen predeterminada según el nombre si no llega desde la API
-  String _obtenerImagenRespaldo(String nombreCategoria) {
-    final nombre = nombreCategoria.toLowerCase();
-    if (nombre.contains('fresa')) {
-      return 'https://res.cloudinary.com/dedsserh6/image/upload/fresas_gm4fex.jpg';
-    } else if (nombre.contains('oblea')) {
-      return 'https://res.cloudinary.com/dedsserh6/image/upload/obleas_ie5nia.jpg';
-    } else if (nombre.contains('torta')) {
-      return 'https://res.cloudinary.com/dedsserh6/image/upload/tortas_aiguxm.jpg';
-    } else if (nombre.contains('postre')) {
-      return 'https://res.cloudinary.com/dedsserh6/image/upload/postres_mq8dhl.jpg';
-    } else if (nombre.contains('dona')) {
-      return 'https://res.cloudinary.com/dedsserh6/image/upload/donas_rntqry.jpg';
-    } else if (nombre.contains('cupcake')) {
-      return 'https://res.cloudinary.com/dedsserh6/image/upload/cupcakes_ijcml2.jpg';
-    } else {
-      return 'https://i.imgur.com/ZOEa1Yy.png'; // Imagen genérica de respaldo
+    // Buscar coincidencia exacta
+    if (screenMap.containsKey(normalizedTitle)) {
+      debugPrint('✅ Pantalla encontrada (exacta): "$normalizedTitle"');
+      return screenMap[normalizedTitle]!();
     }
+
+    // Buscar coincidencia parcial (contiene)
+    for (var entry in screenMap.entries) {
+      if (normalizedTitle.contains(entry.key)) {
+        debugPrint('✅ Pantalla encontrada (contiene "$normalizedTitle"): "${entry.key}"');
+        return entry.value();
+      }
+    }
+    
+    // Buscar si alguna key contiene el título normalizado
+    for (var entry in screenMap.entries) {
+      if (entry.key.contains(normalizedTitle)) {
+        debugPrint('✅ Pantalla encontrada (key contiene): "${entry.key}"');
+        return entry.value();
+      }
+    }
+
+    debugPrint('❌ No hay pantalla para: "$normalizedTitle"');
+    debugPrint('📋 Opciones disponibles: ${screenMap.keys.join(", ")}');
+    return null;
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-     appBar: AppBar(
-        title: const Text('Categorías de Productos'), // O el título que desees
+      backgroundColor: const Color(0xFFFFF1F6),
+      appBar: AppBar(
+        backgroundColor: Colors.pinkAccent,
+        elevation: 2,
+        title: const Text(
+          'Categorías de Productos',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         actions: [
-          // Ícono del carrito con contador
           Consumer<CartService>(
             builder: (context, cartService, child) {
               return Stack(
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.shopping_cart),
+                    icon: const Icon(Icons.shopping_cart, color: Colors.white),
                     onPressed: () {
-                      // Navega a la pantalla del carrito al tocar el icono
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const CartScreen()),
+                        MaterialPageRoute(
+                          builder: (context) => const CartScreen(),
+                        ),
                       );
                     },
                   ),
-                  if (cartService.totalQuantity > 0) // Solo muestra el badge si hay ítems
+                  if (cartService.totalQuantity > 0)
                     Positioned(
-                      right: 0,
-                      top: 0,
+                      right: 8,
+                      top: 8,
                       child: Container(
                         padding: const EdgeInsets.all(2),
                         decoration: BoxDecoration(
@@ -123,6 +131,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 10,
+                            fontWeight: FontWeight.bold,
                           ),
                           textAlign: TextAlign.center,
                         ),
@@ -140,12 +149,97 @@ class _HomeScreenState extends State<HomeScreen> {
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
-              child: CircularProgressIndicator(color: Colors.pinkAccent),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(
+                    color: Colors.pinkAccent,
+                    strokeWidth: 3,
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'Cargando categorías...',
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ),
             );
           } else if (snapshot.hasError) {
-            return Center(child: Text("Error: ${snapshot.error}"));
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, size: 60, color: Colors.red),
+                  const SizedBox(height: 16),
+                  Text(
+                    "Error: ${snapshot.error}",
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.red),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        _futureCategorias = CategoriaApiService().obtenerCategorias();
+                      });
+                    },
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Reintentar'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.pinkAccent,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(25),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
           } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text("No hay categorías disponibles"));
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.category_outlined,
+                    size: 80,
+                    color: Colors.grey[400],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    "No hay categorías disponibles",
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        _futureCategorias = CategoriaApiService().obtenerCategorias();
+                      });
+                    },
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Actualizar'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.pinkAccent,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(25),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
           }
 
           final categories = snapshot.data!;
@@ -163,27 +257,33 @@ class _HomeScreenState extends State<HomeScreen> {
               itemBuilder: (context, index) {
                 final category = categories[index];
 
-                // Imagen: usa la de la API si viene, si no, una por defecto
-                final imageUrl = (category.urlImg?.isNotEmpty ?? false)
-                    ? category.urlImg!
-                    : _obtenerImagenRespaldo(category.nombreCategoria);
-
                 return CategoryCard(
                   title: category.nombreCategoria,
-                  imageUrl: imageUrl,
+                  imageUrl: category.urlImg ?? '', // Usar imagen de la API
                   onTap: () {
-                    final screen =
-                        _getCategoryScreen(category.nombreCategoria);
+                    debugPrint('👆 Click en: "${category.nombreCategoria}"');
+                    
+                    final screen = _getCategoryScreen(category.nombreCategoria);
+                    
                     if (screen != null) {
+                      debugPrint('✅ Navegando...');
                       Navigator.push(
                         context,
                         MaterialPageRoute(builder: (_) => screen),
                       );
                     } else {
+                      debugPrint('❌ Pantalla no disponible');
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(
-                            'No hay pantalla para "${category.nombreCategoria}".',
+                            'Pantalla no disponible para "${category.nombreCategoria}"',
+                          ),
+                          backgroundColor: Colors.orange,
+                          behavior: SnackBarBehavior.floating,
+                          action: SnackBarAction(
+                            label: 'OK',
+                            textColor: Colors.white,
+                            onPressed: () {},
                           ),
                         ),
                       );

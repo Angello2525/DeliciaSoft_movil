@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../models/General_models.dart' as GeneralModels;
 import '../../services/donas_api_services.dart';
+import '../../services/cart_services.dart';
+import '../cart_screen.dart';
 
 class ChocolateScreen extends StatefulWidget {
   final String categoryTitle;
@@ -160,7 +163,7 @@ class _ChocolateScreenState extends State<ChocolateScreen> {
                         ),
                       ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.brown,
+                        backgroundColor: Colors.pinkAccent,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 8,
@@ -193,13 +196,13 @@ class _ChocolateScreenState extends State<ChocolateScreen> {
               Icon(
                 Icons.cookie,
                 size: 50,
-                color: Colors.brown,
+                color: Colors.pinkAccent,
               ),
               SizedBox(height: 8),
               Text(
                 'Chocolate',
                 style: TextStyle(
-                  color: Colors.brown,
+                  color: Colors.pinkAccent,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -220,7 +223,7 @@ class _ChocolateScreenState extends State<ChocolateScreen> {
                 ? loadingProgress.cumulativeBytesLoaded /
                     loadingProgress.expectedTotalBytes!
                 : null,
-            color: Colors.brown,
+            color: Colors.pinkAccent,
             strokeWidth: 2,
           ),
         );
@@ -283,7 +286,7 @@ class _ChocolateScreenState extends State<ChocolateScreen> {
             icon: const Icon(Icons.refresh),
             label: const Text('Reintentar'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.brown,
+              backgroundColor: Colors.pinkAccent,
               foregroundColor: Colors.white,
               padding:
                   const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -307,9 +310,9 @@ class _ChocolateScreenState extends State<ChocolateScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFEFEBE9),
+      backgroundColor: const Color(0xFFFCE4EC),
       appBar: AppBar(
-        backgroundColor: Colors.brown,
+        backgroundColor: Colors.pinkAccent,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
@@ -325,12 +328,52 @@ class _ChocolateScreenState extends State<ChocolateScreen> {
           ),
         ),
         actions: [
-          if (!isLoading)
-            IconButton(
-              icon: const Icon(Icons.refresh, color: Colors.white),
-              onPressed: _fetchProductos,
-              tooltip: 'Actualizar productos',
-            ),
+          Consumer<CartService>(
+            builder: (context, cartService, child) {
+              return Stack(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.shopping_cart, color: Colors.white),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const CartScreen(),
+                        ),
+                      );
+                    },
+                    tooltip: 'Ver carrito',
+                  ),
+                  if (cartService.totalQuantity > 0)
+                    Positioned(
+                      right: 8,
+                      top: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 16,
+                          minHeight: 16,
+                        ),
+                        child: Text(
+                          '${cartService.totalQuantity}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+          const SizedBox(width: 8),
         ],
       ),
       body: isLoading
@@ -339,7 +382,7 @@ class _ChocolateScreenState extends State<ChocolateScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   CircularProgressIndicator(
-                    color: Colors.brown,
+                    color: Colors.pinkAccent,
                     strokeWidth: 3,
                   ),
                   SizedBox(height: 16),
@@ -386,7 +429,7 @@ class _ChocolateScreenState extends State<ChocolateScreen> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(30),
-                        borderSide: const BorderSide(color: Colors.brown, width: 2),
+                        borderSide: const BorderSide(color: Colors.pinkAccent, width: 2),
                       ),
                     ),
                   ),
@@ -396,19 +439,19 @@ class _ChocolateScreenState extends State<ChocolateScreen> {
                   margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.brown[50],
+                    color: Colors.pink[50],
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.brown[200]!),
+                    border: Border.all(color: Colors.pink[200]!),
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.shopping_cart_outlined, color: Colors.brown[700], size: 20),
+                      Icon(Icons.shopping_cart_outlined, color: Colors.pink[700], size: 20),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           'Haz clic en "Agregar al carrito" para añadir productos',
                           style: TextStyle(
-                            color: Colors.brown[900],
+                            color: Colors.pink[900],
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
                           ),
@@ -425,7 +468,7 @@ class _ChocolateScreenState extends State<ChocolateScreen> {
                         ? _buildEmptyState()
                         : RefreshIndicator(
                             onRefresh: _fetchProductos,
-                            color: Colors.brown,
+                            color: Colors.pinkAccent,
                             child: GridView.builder(
                               physics: const AlwaysScrollableScrollPhysics(
                                 parent: BouncingScrollPhysics(),

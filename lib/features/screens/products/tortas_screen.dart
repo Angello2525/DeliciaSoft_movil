@@ -52,7 +52,7 @@ class _TortasScreenState extends State<TortasScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(errorMessage!),
-            backgroundColor: Colors.redAccent,
+            backgroundColor: Colors.pinkAccent,
             action: SnackBarAction(
               label: 'Reintentar',
               textColor: Colors.white,

@@ -51,7 +51,7 @@ class _FresaScreenState extends State<FresaScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(errorMessage!),
-            backgroundColor: Colors.redAccent,
+            backgroundColor: Colors.pinkAccent,
             action: SnackBarAction(
               label: 'Reintentar',
               textColor: Colors.white,
@@ -187,13 +187,13 @@ class _FresaScreenState extends State<FresaScreen> {
               Icon(
                 Icons.cake,
                 size: 50,
-                color: Colors.redAccent,
+                color: Colors.pinkAccent,
               ),
               SizedBox(height: 8),
               Text(
                 'Fresas con crema',
                 style: TextStyle(
-                  color: Colors.redAccent,
+                  color: Colors.pinkAccent,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -214,7 +214,7 @@ class _FresaScreenState extends State<FresaScreen> {
                 ? loadingProgress.cumulativeBytesLoaded /
                     loadingProgress.expectedTotalBytes!
                 : null,
-            color: Colors.redAccent,
+            color: Colors.pinkAccent,
             strokeWidth: 2,
           ),
         );
@@ -277,7 +277,7 @@ class _FresaScreenState extends State<FresaScreen> {
             icon: const Icon(Icons.refresh),
             label: const Text('Reintentar'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.redAccent,
+              backgroundColor: Colors.pinkAccent,
               foregroundColor: Colors.white,
               padding:
                   const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -303,7 +303,7 @@ class _FresaScreenState extends State<FresaScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFFFF9F9),
       appBar: AppBar(
-        backgroundColor: Colors.redAccent,
+        backgroundColor: Colors.pinkAccent,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
@@ -333,7 +333,7 @@ class _FresaScreenState extends State<FresaScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   CircularProgressIndicator(
-                    color: Colors.redAccent,
+                    color: Colors.pinkAccent,
                     strokeWidth: 3,
                   ),
                   SizedBox(height: 16),
@@ -379,13 +379,13 @@ class _FresaScreenState extends State<FresaScreen> {
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.info_outline, color: Colors.red[600], size: 20),
+                      Icon(Icons.info_outline, color: Colors.pink[600], size: 20),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           'Toca cualquier producto para personalizarlo',
                           style: TextStyle(
-                            color: Colors.red[700],
+                            color: Colors.pink[700],
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
                           ),

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../models/General_models.dart' as GeneralModels;
 import '../../services/donas_api_services.dart';
+import '../../services/cart_services.dart';
+import '../cart_screen.dart';
 
 class SandwichesScreen extends StatefulWidget {
   final String categoryTitle;
@@ -160,7 +163,7 @@ class _SandwichesScreenState extends State<SandwichesScreen> {
                         ),
                       ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.amber,
+                        backgroundColor: Colors.pinkAccent,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 8,
@@ -193,13 +196,13 @@ class _SandwichesScreenState extends State<SandwichesScreen> {
               Icon(
                 Icons.lunch_dining,
                 size: 50,
-                color: Colors.amber,
+                color: Colors.pinkAccent,
               ),
               SizedBox(height: 8),
               Text(
                 'Sandwiches',
                 style: TextStyle(
-                  color: Colors.amber,
+                  color: Colors.pinkAccent,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -220,7 +223,7 @@ class _SandwichesScreenState extends State<SandwichesScreen> {
                 ? loadingProgress.cumulativeBytesLoaded /
                     loadingProgress.expectedTotalBytes!
                 : null,
-            color: Colors.amber,
+            color: Colors.pinkAccent,
             strokeWidth: 2,
           ),
         );
@@ -283,7 +286,7 @@ class _SandwichesScreenState extends State<SandwichesScreen> {
             icon: const Icon(Icons.refresh),
             label: const Text('Reintentar'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.amber,
+              backgroundColor: Colors.pinkAccent,
               foregroundColor: Colors.white,
               padding:
                   const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -307,9 +310,9 @@ class _SandwichesScreenState extends State<SandwichesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFBE6),
+      backgroundColor: const Color(0xFFFCE4EC),
       appBar: AppBar(
-        backgroundColor: Colors.amber,
+        backgroundColor: Colors.pinkAccent,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
@@ -325,12 +328,52 @@ class _SandwichesScreenState extends State<SandwichesScreen> {
           ),
         ),
         actions: [
-          if (!isLoading)
-            IconButton(
-              icon: const Icon(Icons.refresh, color: Colors.white),
-              onPressed: _fetchProductos,
-              tooltip: 'Actualizar productos',
-            ),
+          Consumer<CartService>(
+            builder: (context, cartService, child) {
+              return Stack(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.shopping_cart, color: Colors.white),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const CartScreen(),
+                        ),
+                      );
+                    },
+                    tooltip: 'Ver carrito',
+                  ),
+                  if (cartService.totalQuantity > 0)
+                    Positioned(
+                      right: 8,
+                      top: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 16,
+                          minHeight: 16,
+                        ),
+                        child: Text(
+                          '${cartService.totalQuantity}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+          const SizedBox(width: 8),
         ],
       ),
       body: isLoading
@@ -339,7 +382,7 @@ class _SandwichesScreenState extends State<SandwichesScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   CircularProgressIndicator(
-                    color: Colors.amber,
+                    color: Colors.pinkAccent,
                     strokeWidth: 3,
                   ),
                   SizedBox(height: 16),
@@ -386,7 +429,7 @@ class _SandwichesScreenState extends State<SandwichesScreen> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(30),
-                        borderSide: const BorderSide(color: Colors.amber, width: 2),
+                        borderSide: const BorderSide(color: Colors.pinkAccent, width: 2),
                       ),
                     ),
                   ),
@@ -396,19 +439,19 @@ class _SandwichesScreenState extends State<SandwichesScreen> {
                   margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.amber[50],
+                    color: Colors.pink[50],
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.amber[200]!),
+                    border: Border.all(color: Colors.pink[200]!),
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.shopping_cart_outlined, color: Colors.amber[800], size: 20),
+                      Icon(Icons.shopping_cart_outlined, color: Colors.pink[700], size: 20),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           'Haz clic en "Agregar al carrito" para añadir productos',
                           style: TextStyle(
-                            color: Colors.amber[900],
+                            color: Colors.pink[900],
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
                           ),
@@ -425,7 +468,7 @@ class _SandwichesScreenState extends State<SandwichesScreen> {
                         ? _buildEmptyState()
                         : RefreshIndicator(
                             onRefresh: _fetchProductos,
-                            color: Colors.amber,
+                            color: Colors.pinkAccent,
                             child: GridView.builder(
                               physics: const AlwaysScrollableScrollPhysics(
                                 parent: BouncingScrollPhysics(),
@@ -447,5 +490,4 @@ class _SandwichesScreenState extends State<SandwichesScreen> {
               ],
             ),
     );
-  }
-}
+  }}
