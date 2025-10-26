@@ -1137,7 +1137,7 @@ static Future<ApiResponse<Usuario>> getCurrentAdminProfile(String token, String 
 }
 
   static Future<List<Pedido>> getPedidos() async {
-    final response = await http.get(Uri.parse('$__baseUrl/Pedidoes'));
+    final response = await http.get(Uri.parse('$__baseUrl/pedido'));
 
     if (response.statusCode == 200) {
       List jsonResponse = json.decode(response.body);
@@ -1148,7 +1148,7 @@ static Future<ApiResponse<Usuario>> getCurrentAdminProfile(String token, String 
   }
 
   static Future<Pedido> getPedidoById(int id) async {
-    final response = await http.get(Uri.parse('$__baseUrl/Pedidoes/$id'));
+    final response = await http.get(Uri.parse('$__baseUrl/pedido/$id'));
 
     if (response.statusCode == 200) {
       return Pedido.fromJson(json.decode(response.body));
@@ -1168,7 +1168,7 @@ static Future<ApiResponse<Usuario>> getCurrentAdminProfile(String token, String 
   }
 
   static Future<Venta> getVentaById(int id) async {
-    final response = await http.get(Uri.parse('$__baseUrl/Ventums/$id'));
+    final response = await http.get(Uri.parse('$__baseUrl/venta/$id'));
 
     if (response.statusCode == 200) {
       return Venta.fromJson(json.decode(response.body));
@@ -1180,7 +1180,7 @@ static Future<ApiResponse<Usuario>> getCurrentAdminProfile(String token, String 
 
   // Nuevo método para obtener DetalleVenta por IdVenta
   static Future<List<DetalleVenta>> getDetalleVentaByVentaId(int idVenta) async {
-    final response = await http.get(Uri.parse('$__baseUrl/DetalleVentums/ByVenta/$idVenta'));
+    final response = await http.get(Uri.parse('$__baseUrl/detalleventa/by-venta/$idVenta'));
 
     if (response.statusCode == 200) {
       List jsonResponse = json.decode(response.body);
@@ -1258,7 +1258,7 @@ static Future<ApiResponse<Usuario>> getCurrentAdminProfile(String token, String 
 
   static Future<Pedido> createPedido(Pedido pedido) async {
     final response = await http.post(
-      Uri.parse('$__baseUrl/Pedidoes'),
+      Uri.parse('$__baseUrl/pedido'),
       headers: <String, String>{
         'Content-Type': 'application/json; charset=UTF-8',
       },
@@ -1274,7 +1274,7 @@ static Future<ApiResponse<Usuario>> getCurrentAdminProfile(String token, String 
 
   static Future<Pedido> updatePedido(int id, Pedido pedido) async {
     final response = await http.put(
-      Uri.parse('$__baseUrl/Pedidoes/$id'),
+      Uri.parse('$__baseUrl/pedido/$id'),
       headers: <String, String>{
         'Content-Type': 'application/json; charset=UTF-8',
       },
@@ -1288,8 +1288,36 @@ static Future<ApiResponse<Usuario>> getCurrentAdminProfile(String token, String 
     }
   }
 
+  static Future<List<Map<String, dynamic>>> getAllPedidos() async {
+  try {
+    print('=== OBTENIENDO PEDIDOS ===');
+    
+    final response = await http.get(
+      Uri.parse('$__baseUrl/pedido'), // ✅ Endpoint correcto (singular)
+      headers: _headers,
+    );
+    
+    print('URL: $__baseUrl/pedido');
+    print('Response Status: ${response.statusCode}');
+    print('Response Body: ${response.body}');
+    print('=========================');
+    
+    if (response.statusCode == 200) {
+      final List<dynamic> pedidosJson = jsonDecode(response.body);
+      print('✅ ${pedidosJson.length} pedidos obtenidos');
+      return pedidosJson.cast<Map<String, dynamic>>();
+    } else {
+      _handleHttpError(response);
+      return [];
+    }
+  } catch (e) {
+    print('❌ Error al obtener pedidos: $e');
+    throw Exception('Error al obtener pedidos: $e');
+  }
+}
+
   static Future<void> deletePedido(int id) async {
-    final response = await http.delete(Uri.parse('$__baseUrl/Pedidoes/$id'));
+    final response = await http.delete(Uri.parse('$__baseUrl/pedido/$id'));
 
     if (response.statusCode != 204) {
       throw Exception('Failed to delete pedido: ${response.statusCode} - ${response.body}');
@@ -1335,54 +1363,259 @@ static Future<ApiResponse<Usuario>> getCurrentAdminProfile(String token, String 
   }
 }
 
-  static Future<List<Abono>> getAbonosByPedidoId(int idPedido) async {
-    final response = await http.get(Uri.parse('$__baseUrl/Abonos/ByPedido/$idPedido'));
-    _handleHttpError(response);
+static Future<List<Abono>> getAbonosByPedidoId(int idVenta) async {
+  try {
+
+    final response = await http.get(
+      Uri.parse('$__baseUrl/abonos/pedido/$idVenta'),
+      headers: _headers,
+    );
+    
+    print('=== OBTENIENDO ABONOS ===');
+    print('URL: $__baseUrl/abonos/pedido/$idVenta');
+    print('ID Venta: $idVenta');
+    print('Response Status: ${response.statusCode}');
+    print('Response Body: ${response.body}');
+    print('========================');
+    
     if (response.statusCode == 200) {
       final List<dynamic> abonosJson = jsonDecode(response.body);
-      return abonosJson.map((abono) => Abono.fromJson(abono)).toList();
+      final abonos = abonosJson.map((abono) => Abono.fromJson(abono)).toList();
+      print('✅ ${abonos.length} abonos obtenidos');
+      return abonos;
+    } else if (response.statusCode == 404) {
+      // Si no existe pedido para esta venta, devolver lista vacía
+      print('ℹ️ No hay pedido/abonos para esta venta');
+      return [];
     } else {
-      throw Exception('Failed to load abonos for Pedido ID $idPedido: ${response.statusCode} - ${response.body}');
+      _handleHttpError(response);
+      return [];
     }
+  } catch (e) {
+    print('❌ Error al obtener abonos: $e');
+    // No lanzar excepción, devolver lista vacía
+    return [];
   }
+}
 
-  static Future<Abono> createAbono(Abono abono) async {
+static Future<Abono> createAbonoWithImage({
+  required int idVenta,  // ✅ CAMBIO IMPORTANTE: Ahora recibe idVenta, no idPedido
+  required String metodoPago,
+  required double cantidadPagar,
+  XFile? imagenComprobante,
+}) async {
+  try {
+    print('=== CREANDO ABONO ===');
+    print('ID Venta: $idVenta');
+    print('Método Pago: $metodoPago');
+    print('Cantidad: $cantidadPagar');
+    print('¿Tiene imagen?: ${imagenComprobante != null}');
+    
+    // Validaciones
+    if (metodoPago.isEmpty) {
+      throw Exception('Método de pago es requerido');
+    }
+    
+    if (metodoPago.length > 20) {
+      throw Exception('Método de pago muy largo (máximo 20 caracteres)');
+    }
+    
+    if (cantidadPagar <= 0) {
+      throw Exception('La cantidad a pagar debe ser mayor a 0');
+    }
+    
+    // Crear FormData para enviar archivo
+    var request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$__baseUrl/abonos'), // ✅ CORREGIDO: /abonos (minúscula)
+    );
+    
+    // ✅ IMPORTANTE: El backend espera estos nombres de campos exactos
+    request.fields['idpedido'] = idVenta.toString(); // Backend lo llama idpedido pero recibe ID de venta
+    request.fields['metodopago'] = metodoPago;
+    request.fields['cantidadpagar'] = cantidadPagar.toStringAsFixed(2);
+    request.fields['TotalPagado'] = cantidadPagar.toStringAsFixed(2);
+    
+    print('Campos enviados:');
+    request.fields.forEach((key, value) {
+      print('  $key: $value');
+    });
+    
+    // Si hay imagen, agregarla
+    if (imagenComprobante != null) {
+      try {
+        if (kIsWeb) {
+          Uint8List bytes = await imagenComprobante.readAsBytes();
+          request.files.add(
+            http.MultipartFile.fromBytes(
+              'comprobante', // ✅ Nombre correcto del campo
+              bytes,
+              filename: imagenComprobante.name,
+            ),
+          );
+        } else {
+          request.files.add(
+            await http.MultipartFile.fromPath(
+              'comprobante',
+              imagenComprobante.path,
+              filename: imagenComprobante.name,
+            ),
+          );
+        }
+        print('✅ Imagen agregada al request');
+      } catch (imageError) {
+        print('❌ Error al procesar imagen: $imageError');
+        throw Exception('Error al procesar imagen: $imageError');
+      }
+    }
+    
+    print('Enviando request a: ${request.url}');
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+    
+    print('Response Status: ${response.statusCode}');
+    print('Response Body: ${response.body}');
+    print('====================');
+    
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      final abonoCreado = Abono.fromJson(jsonDecode(response.body));
+      print('✅ Abono creado exitosamente con ID: ${abonoCreado.idAbono}');
+      return abonoCreado;
+    } else {
+      String errorMessage = 'Error al crear abono';
+      try {
+        final errorData = jsonDecode(response.body);
+        errorMessage = errorData['message']?.toString() ?? errorMessage;
+        
+        // Mensajes específicos
+        if (errorMessage.contains('too long for the column') || 
+            errorMessage.contains('MÃ©todo de pago muy largo')) {
+          errorMessage = 'Método de pago muy largo (máximo 20 caracteres)';
+        } else if (errorMessage.contains('ID de pedido es requerido')) {
+          errorMessage = 'Error: ID de venta requerido';
+        }
+      } catch (e) {
+        if (response.body.isNotEmpty) {
+          errorMessage = response.body;
+        }
+      }
+      throw Exception(errorMessage);
+    }
+  } catch (e) {
+    print('❌ Error en createAbonoWithImage: $e');
+    throw Exception('Error al crear abono: $e');
+  }
+}
+
+ @Deprecated('Usar createAbonoWithImage en su lugar')
+static Future<Abono> createAbono(Abono abono) async {
+  try {
+    print('⚠️ ADVERTENCIA: Usando método legacy createAbono');
+    print('Abono data: ${jsonEncode(abono.toCreateJson())}');
+    
     final response = await http.post(
-      Uri.parse('$__baseUrl/Abonos'),
-      headers: <String, String>{
-        'Content-Type': 'application/json; charset=UTF-8',
-      },
-      body: jsonEncode(abono.toCreateJson()), 
+      Uri.parse('$__baseUrl/abonos'), // ✅ CORREGIDO: /abonos (minúscula)
+      headers: _headers,
+      body: jsonEncode(abono.toCreateJson()),
     );
 
-    if (response.statusCode == 201) {
+    print('Response Status: ${response.statusCode}');
+    print('Response Body: ${response.body}');
+
+    if (response.statusCode == 201 || response.statusCode == 200) {
       return Abono.fromJson(jsonDecode(response.body));
     } else {
-      throw Exception('Failed to create abono: ${response.statusCode} - ${response.body}');
+      _handleHttpError(response);
+      throw Exception('Failed to create abono');
     }
+  } catch (e) {
+    print('❌ Error en createAbono legacy: $e');
+    throw Exception('Error al crear abono: $e');
   }
+}
 
    static Future<void> updateAbono(int id, Abono abono) async {
+  try {
+    print('=== ACTUALIZANDO ABONO ===');
+    print('ID: $id');
+    print('Datos: ${jsonEncode(abono.toJson())}');
+    
     final response = await http.put(
-      Uri.parse('$__baseUrl/Abonos/$id'),
-      headers: <String, String>{
-        'Content-Type': 'application/json; charset=UTF-8',
-      },
+      Uri.parse('$__baseUrl/abonos/$id'), // ✅ CORREGIDO: /abonos (minúscula)
+      headers: _headers,
       body: jsonEncode(abono.toJson()),
     );
 
-    if (response.statusCode != 204) { // 204 No Content es el código que devuelve tu API para PUT exitoso
-      throw Exception('Failed to update abono: ${response.statusCode} - ${response.body}');
+    print('Response Status: ${response.statusCode}');
+    print('Response Body: ${response.body}');
+    print('=========================');
+
+    if (response.statusCode != 204 && response.statusCode != 200) {
+      _handleHttpError(response);
+      throw Exception('Failed to update abono');
     }
+    
+    print('✅ Abono actualizado exitosamente');
+  } catch (e) {
+    print('❌ Error al actualizar abono: $e');
+    throw Exception('Error al actualizar abono: $e');
   }
+}
 
   static Future<void> deleteAbono(int id) async {
-    final response = await http.delete(Uri.parse('$__baseUrl/Abonos/$id'));
+  try {
+    print('=== ELIMINANDO ABONO ===');
+    print('ID: $id');
+    
+    final response = await http.delete(
+      Uri.parse('$__baseUrl/abonos/$id'), // ✅ CORREGIDO: /abonos (minúscula)
+      headers: _headers,
+    );
 
-    if (response.statusCode != 204) {
-      throw Exception('Failed to delete abono: ${response.statusCode} - ${response.body}');
+    print('Response Status: ${response.statusCode}');
+    print('Response Body: ${response.body}');
+    print('=======================');
+
+    if (response.statusCode != 204 && response.statusCode != 200) {
+      _handleHttpError(response);
+      throw Exception('Failed to delete abono');
     }
+    
+    print('✅ Abono eliminado exitosamente');
+  } catch (e) {
+    print('❌ Error al eliminar abono: $e');
+    throw Exception('Error al eliminar abono: $e');
   }
+}
+
+// 6. ANULAR ABONO (NUEVO MÉTODO)
+static Future<Map<String, dynamic>> anularAbono(int idAbono) async {
+  try {
+    print('=== ANULANDO ABONO ===');
+    print('ID: $idAbono');
+    
+    final response = await http.patch(
+      Uri.parse('$__baseUrl/abonos/$idAbono/anular'), // ✅ Ruta correcta
+      headers: _headers,
+    );
+
+    print('Response Status: ${response.statusCode}');
+    print('Response Body: ${response.body}');
+    print('=====================');
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      print('✅ Abono anulado exitosamente');
+      return data;
+    } else {
+      _handleHttpError(response);
+      throw Exception('Failed to anular abono');
+    }
+  } catch (e) {
+    print('❌ Error al anular abono: $e');
+    throw Exception('Error al anular abono: $e');
+  }
+}
 
  static Future<Venta> createVenta(Venta venta) async {
   final fechaFormateada = DateFormat('yyyy-MM-dd').format(venta.fechaVenta);
@@ -1396,7 +1629,7 @@ static Future<ApiResponse<Usuario>> getCurrentAdminProfile(String token, String 
 };
 
   final response = await http.post(
-    Uri.parse('$__baseUrl/Ventums'),
+    Uri.parse('$__baseUrl/venta'),
     headers: <String, String>{
       'Content-Type': 'application/json; charset=UTF-8',
     },
@@ -1430,7 +1663,7 @@ static Future<DetalleVenta> createDetalleVenta(DetalleVenta detalleVenta) async 
   };
 
   final response = await http.post(
-    Uri.parse('$__baseUrl/DetalleVentums'),
+    Uri.parse('$__baseUrl/detalleventa'),
     headers: <String, String>{
       'Content-Type': 'application/json; charset=UTF-8',
     },

@@ -20,6 +20,32 @@ class Constants {
   static const String verifyEmailEndpoint = '$baseUrl/Auth/verify-email';
   static const String refreshTokenEndpoint = '$baseUrl/Auth/refresh-token';
 
+  // ✅ ENDPOINTS DE VENTAS Y ABONOS CORREGIDOS
+  static const String ventasEndpoint = '$baseUrl/venta';
+  static const String ventasListadoEndpoint = '$baseUrl/venta/listado-resumen';
+  static const String ventaDetallesEndpoint = '$baseUrl/venta'; // + /{id}/detalles
+  static const String estadosVentaEndpoint = '$baseUrl/estado-venta';
+  
+  // ✅ ENDPOINTS DE PEDIDOS (singular, no plural)
+  static const String pedidosEndpoint = '$baseUrl/pedido';
+  static const String pedidoByVentaEndpoint = '$baseUrl/pedido/by-venta'; // + /{idVenta}
+  
+  // ✅ IMPORTANTE: Todos los endpoints de abonos en MINÚSCULA
+  static const String abonosEndpoint = '$baseUrl/abonos';
+  static const String abonosByPedidoEndpoint = '$baseUrl/abonos/pedido'; // + /{idVenta}
+  static const String anularAbonoEndpoint = '$baseUrl/abonos'; // + /{idAbono}/anular
+  
+  // ✅ ENDPOINTS DE DETALLE VENTA
+  static const String detalleVentaEndpoint = '$baseUrl/detalleventa';
+  static const String detalleVentaByVentaEndpoint = '$baseUrl/detalleventa/by-venta'; // + /{idVenta}
+  
+  // Otros endpoints
+  static const String sedesEndpoint = '$baseUrl/sede';
+  static const String productosEndpoint = '$baseUrl/productogeneral';
+  static const String categoriasEndpoint = '$baseUrl/categoriaproducto';
+  static const String imagenesEndpoint = '$baseUrl/Imagenes';
+  static const String clientesEndpoint = '$baseUrl/Clientes';
+
 
   // Email Configuration
   static const String emailPassword = 'xska kvfs wscx dris';
